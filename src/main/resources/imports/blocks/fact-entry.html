@@ -1,0 +1,48 @@
+<meta property="blocks:title" content="$MESSAGES.blocks.imports.fact.entryBlockTitle">
+<meta property="blocks:description" content="$MESSAGES.blocks.imports.fact.entryBlockDescription">
+<meta property="blocks:icon" content="fa-list-alt">
+
+<meta property="blocks:controller" content="com.beligum.blocks.imports.fact.Controller">
+
+## PUBLIC STYLES
+<link href="/assets/styles/imports/blocks-fact-entry.less" rel="stylesheet"/>
+
+## ADMIN STYLES
+<link href="/assets/styles/imports/blocks-fact-entry-admin.less" rel="stylesheet" data-scope-role="admin" />
+
+## ADMIN LIBS
+## blocks-text
+<script src="/assets/webjars/medium-editor/5.14.4/dist/js/medium-editor.js" type="application/javascript" data-scope-role="admin"></script>
+<script src="/assets/scripts/imports/blocks-text/medium/medium-styles-extension.js" type="application/javascript" data-scope-role="admin"></script>
+<script src="/assets/scripts/imports/blocks-text/medium/mediumModule.js" type="application/javascript" data-scope-role="admin"></script>
+<script src="/constants/blocks/imports/text?type=js" type="application/javascript" data-scope-role="admin"></script>
+<script src="/assets/scripts/imports/blocks-text.js" type="application/javascript" data-scope-role="admin"></script>
+<script src="/assets/scripts/imports/blocks-text/styles.js" type="application/javascript" data-scope-role="admin"></script>
+
+## our libs
+<script src="/assets/webjars/momentjs/2.12.0/moment.js" type="application/javascript" data-scope-role="admin"></script>
+## TODO these should be dynamic, adapted to the configured langs... (note that en locale is included by default)
+<script src="/assets/webjars/momentjs/2.12.0/locale/fr.js" type="application/javascript" data-scope-role="admin"></script>
+<script src="/assets/webjars/momentjs/2.12.0/locale/nl.js" type="application/javascript" data-scope-role="admin"></script>
+
+## ADMIN SCRIPTS
+<script src="/constants/blocks/imports/fact?type=js" type="application/javascript" data-scope-role="admin"></script>
+<script src="/messages/blocks/imports/fact?type=js" type="application/javascript" data-scope-role="admin"></script>
+<script src="/assets/scripts/imports/blocks-fact-entry.js" type="application/javascript" data-scope-role="admin"></script>
+<script src="/assets/scripts/imports/blocks-fact-entry-text.js" type="application/javascript" data-scope-role="admin"></script>
+
+<template>
+## Note: don't use .label here, it's taken by bootstrap (the pills thing))!
+## Also don't use <label> because it messes with the cursor (and is meant for forms, not key/value setups)
+    <div data-property="$CONSTANTS.blocks.imports.fact.FACT_ENTRY_NAME_PROPERTY">
+        $MESSAGES.blocks.imports.fact.widgetEntryDefaultLabel
+    </div>
+    <div data-property="$CONSTANTS.blocks.imports.fact.FACT_ENTRY_VALUE_PROPERTY">
+    ## This is the wrapper on which the property attribute will be set; that way, we can store the raw html with data-property="value"
+    ## and store the rdfa-property containing the real data (and type))
+    ## Note: sync this code with the code in blocks-fact-entry.js::_createCombobox()
+        <div class="$CONSTANTS.blocks.imports.fact.FACT_ENTRY_PROPERTY_CLASS">
+            $MESSAGES.blocks.imports.fact.widgetEntryDefaultValue
+        </div>
+    </div>
+</template>

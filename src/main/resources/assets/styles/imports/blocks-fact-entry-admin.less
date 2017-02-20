@@ -1,0 +1,107 @@
+//-----IMPORTS-----
+@import (reference) "/assets/webjars/bootstrap/3.3.4/less/variables.less";
+@import (reference) "/assets/webjars/bootstrap/3.3.4/less/mixins.less";
+@import (reference) "/assets/webjars/bootstrap/3.3.4/less/forms.less";
+@import (reference) "/assets/webjars/bootstrap/3.3.4/less/utilities.less";
+@import (reference) "/constants/blocks/core?type=less";
+
+//-----STYLES-----
+.@{PAGE_SIDEBAR_CLASS} {
+
+  //wrapper for an entry in a panel in the sidebar
+  .@{INPUT_TYPE_WRAPPER_CLASS} {
+    .clearfix;
+
+    //a number spinner should be on the same line and rather small
+    &.@{INPUT_TYPE_NUMBER} {
+
+      .input-group {
+        .pull-right();
+
+        input {
+          max-width: 100px;
+        }
+      }
+    }
+
+    //date and time are small enough to fit on the same line
+    &.@{INPUT_TYPE_DATE} {
+      .input-group {
+        .pull-right();
+
+        &,
+        & input {
+          max-width: 160px;
+        }
+      }
+    }
+    &.@{INPUT_TYPE_TIME} {
+      .input-group {
+        .pull-right();
+
+        &,
+        & input {
+          max-width: 130px;
+        }
+      }
+    }
+    &.@{INPUT_TYPE_DATETIME} {
+      .input-group {
+        .pull-right();
+
+        &,
+        & input {
+          max-width: 230px;
+        }
+      }
+    }
+
+    &.@{INPUT_TYPE_COLOR} {
+      .input-group {
+        .pull-right();
+
+        &,
+        & input {
+          max-width: 45px;
+        }
+      }
+    }
+
+    &.@{INPUT_TYPE_RESOURCE} {
+      //typeahead menu wrapper
+      .tt-menu {
+
+        //typeahead suggestion entry wrapper
+        .tt-suggestion {
+
+          cursor: pointer;
+
+          //individiual sub-sections in a suggestion box
+          p {
+            max-width: 220px;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            overflow-x: hidden;
+            margin-right: 10px;
+
+            &.@{INPUT_TYPE_RES_SUG_TITLE_CLASS} {
+              font-weight: bold;
+              margin: 0;
+            }
+            &.@{INPUT_TYPE_RES_SUG_SUBTITLE_CLASS} {
+              font-size: 0.8em;
+              margin: 0;
+            }
+          }
+
+          &.@{INPUT_TYPE_RES_SUG_EMPTY_CLASS} {
+            p.@{INPUT_TYPE_RES_SUG_TITLE_CLASS} {
+              font-weight: normal;
+              font-style: italic;
+            }
+          }
+        }
+      }
+    }
+  }
+}

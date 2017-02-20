@@ -1,0 +1,76 @@
+//-----IMPORTS-----
+@import (reference) "/assets/webjars/bootstrap/3.3.4/less/variables.less";
+@import (reference) "/assets/webjars/bootstrap/3.3.4/less/mixins.less";
+@import (reference) "/assets/webjars/bootstrap/3.3.4/less/forms.less";
+
+@import (reference) "/assets/webjars/font-awesome/4.3.0/less/variables.less";
+@import (reference) "/assets/webjars/font-awesome/4.3.0/less/core.less";
+@import (reference) "/assets/webjars/font-awesome/4.3.0/less/mixins.less";
+
+@import (reference) "/constants/blocks/core?type=less";
+@import (reference) "/constants/blocks/imports/fact?type=less";
+
+//-----STYLES-----
+blocks-fact-entry {
+
+  .make-row();
+  .clearfix();//doesn't seem to be inherited from make-row well...
+
+  margin-top: 15px;
+  //note: don't add a bottom margin, so we can easily re-style the doubles
+  margin-bottom: 0px;
+
+  &:first-of-type {
+    margin-top: 5px;
+  }
+
+  //create a padding with a (possible) column border
+  &:last-of-type {
+    margin-bottom: 15px;
+  }
+
+  [data-property='@{FACT_ENTRY_NAME_PROPERTY}'] {
+    .make-md-column(4);
+    font-weight: bold;
+
+    p:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  [data-property='@{FACT_ENTRY_VALUE_PROPERTY}'] {
+    .make-md-column(8);
+
+    p:last-child {
+      margin-bottom: 0;
+    }
+
+    .@{INPUT_TYPE_BOOLEAN} {
+      .@{INPUT_TYPE_BOOLEAN_VALUE_CLASS} {
+        .fa-icon();
+      }
+      &[content='false'] {
+        .@{INPUT_TYPE_BOOLEAN_VALUE_CLASS}:before {
+          content: @fa-var-times;
+        }
+      }
+      &[content='true'] {
+        .@{INPUT_TYPE_BOOLEAN_VALUE_CLASS}:before {
+          content: @fa-var-check;
+        }
+      }
+    }
+
+    .@{INPUT_TYPE_COLOR_VALUE_CLASS} {
+      width: 12px;
+      height: 12px;
+      border: 1px solid #F0F0F0;
+      line-height: 100%;
+      margin: 5px auto 5px 0;
+    }
+    .@{INPUT_TYPE_TIME_TZONE_CLASS} {
+      font-size: 0.8em;
+      padding-left: 0.5em;
+    }
+  }
+}
