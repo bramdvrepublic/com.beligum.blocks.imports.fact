@@ -1,7 +1,7 @@
 /**
  * Created by bram on 24/02/16.
  */
-base.plugin("blocks.imports.BlocksFactEntryText", ["base.core.Class", "blocks.imports.Text", "constants.blocks.core", "constants.blocks.imports.fact", function (Class, Text, BlocksConstants, FactConstants)
+base.plugin("blocks.imports.FactEntryText", ["base.core.Class", "blocks.imports.Text", "constants.blocks.core", "constants.blocks.imports.fact", function (Class, Text, BlocksConstants, FactConstants)
 {
     var BlocksFactEntryText = this;
     this.TAGS = [
