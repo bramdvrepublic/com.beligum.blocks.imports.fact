@@ -101,10 +101,11 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                     //(don't worry if it gets called multiple times, I just hope it's not too slow)
                     //TODO: one issue remains if you drag an entry out (or in) a sequence, you need to focus it before it updates...
                     var prev = null;
-                    $('blocks-fact-entry [data-property='+FactConstants.FACT_ENTRY_VALUE_CLASS+'] ['+FactConstants.FACT_ENTRY_PROPERTY_CLASS+']').each(function() {
+                    $('blocks-fact-entry [data-property=' + FactConstants.FACT_ENTRY_VALUE_CLASS + '] [' + FactConstants.FACT_ENTRY_PROPERTY_CLASS + ']').each(function ()
+                    {
                         var el = $(this);
 
-                        if (prev!=null && prev.attr(FactConstants.FACT_ENTRY_PROPERTY_CLASS)==el.attr(FactConstants.FACT_ENTRY_PROPERTY_CLASS)) {
+                        if (prev != null && prev.attr(FactConstants.FACT_ENTRY_PROPERTY_CLASS) == el.attr(FactConstants.FACT_ENTRY_PROPERTY_CLASS)) {
                             el.parents('blocks-fact-entry').addClass(FactConstants.FACT_ENTRY_DOUBLE_CLASS);
                         }
                         else {
@@ -207,18 +208,6 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
 
                             //we need to add this class to have it picked up by widget-specific modules (like the editor)
                             propElement.addClass(newValueTerm.widgetType);
-
-                            var defaultEditorHtml = "<p>Type your text here...</p>";
-                            switch (newValueTerm.widgetType) {
-                                case BlocksConstants.INPUT_TYPE_EDITOR:
-                                    propElement.html(defaultEditorHtml);
-                                    break;
-                                case BlocksConstants.INPUT_TYPE_INLINE_EDITOR:
-                                    propElement.html(defaultEditorHtml);
-                                    //we're not a span, so force inline
-                                    propElement.attr(TextConstants.OPTIONS_ATTR, TextConstants.OPTIONS_FORCE_INLINE + " " + TextConstants.OPTIONS_NO_TOOLBAR);
-                                    break;
-                            }
                         }
                     }
 
@@ -254,6 +243,14 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                     }
 
                     switch (newValueTerm.widgetType) {
+                        case BlocksConstants.INPUT_TYPE_EDITOR:
+                            defaultValue = FactMessages.textEntryDefaultValue;
+                            break;
+                        case BlocksConstants.INPUT_TYPE_INLINE_EDITOR:
+                            defaultValue = FactMessages.textEntryDefaultValue;
+                            //we're not a span, so force inline
+                            propElement.attr(TextConstants.OPTIONS_ATTR, TextConstants.OPTIONS_FORCE_INLINE + " " + TextConstants.OPTIONS_NO_TOOLBAR);
+                            break;
                         case BlocksConstants.INPUT_TYPE_BOOLEAN:
                             combobox.after(_this._createBooleanWidget(block, propElement, CONTENT_ATTR));
                             break;
@@ -377,7 +374,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                                         propElement.attr(RESOURCE_ATTR, val);
                                         //for now, we just use the URI as the link name...
                                         var linkName = val;
-                                        propElement.html('<a href="' + val + '"'+(isAbsolute?' target="_blank"':'')+'>'+linkName+'</a>');
+                                        propElement.html('<a href="' + val + '"' + (isAbsolute ? ' target="_blank"' : '') + '>' + linkName + '</a>');
                                     }
                                     else {
                                         //don't remove the attr, set it to empty (or the help text in the HTML will end up as the value)
@@ -437,6 +434,13 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                                         propElement.html(defaultValue);
                                     }
                                 }));
+                            break;
+
+                        //Note: we need this default section to remove the italic <i> tags from the default value
+                        default:
+                            Logger.warn("Encountered unsupported widget type and using default value, hope this is ok; " + newValueTerm.widgetType);
+                            //I guess this (using text) is ok?
+                            defaultValue = FactMessages.textEntryDefaultValue;
                             break;
                     }
 
