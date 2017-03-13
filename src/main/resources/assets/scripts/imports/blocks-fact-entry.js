@@ -89,12 +89,13 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             var propElement = element.find("." + FactConstants.FACT_ENTRY_PROPERTY_CLASS);
 
             var _this = this;
-            var endpointURL = "/blocks/admin/rdf/properties/";
+            var endpointURL = BlocksConstants.RDF_PROPERTIES_ENDPOINT;
             var pageTypeof = $('html').attr(TYPEOF_ATTR);
             if (pageTypeof) {
-                endpointURL += "?resourceTypeCurie=" + pageTypeof;
+                endpointURL += "?" + BlocksConstants.RDF_RES_TYPE_CURIE_PARAM + "=" + pageTypeof;
             }
-            var combobox = this.addUniqueAttributeValueAsync(Sidebar, propElement, "Property type", PROPERTY_ATTR, endpointURL, "title", TERM_NAME_FIELD,
+
+            var combobox = this.addUniqueAttributeValueAsync(Sidebar, propElement, FactMessages.propertyTypeLabel, PROPERTY_ATTR, endpointURL, "title", TERM_NAME_FIELD,
                 function changeListener(oldValueTerm, newValueTerm)
                 {
                     //this is a good place to iterate the fact entries and mark the doubles
