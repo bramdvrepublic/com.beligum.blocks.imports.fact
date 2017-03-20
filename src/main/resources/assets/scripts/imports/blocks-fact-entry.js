@@ -199,7 +199,8 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                             //If we're dealing with a reference to another resource, we use the typeof attribute,
                             //otherwise (when dealing with a literal), we use the datatype attribute.
                             //We compare the use of @typeof (together with @resource) as the 'reference-equivalent' of using @datatype together with a literal.
-                            if (newValueTerm.widgetType == BlocksConstants.INPUT_TYPE_RESOURCE) {
+                            //Also note that we treat a ANY_URI type the same way as a resource for serialization reasons (it results in the RDF we expect)
+                            if (newValueTerm.widgetType == BlocksConstants.INPUT_TYPE_RESOURCE || newValueTerm.widgetType == BlocksConstants.INPUT_TYPE_URI) {
                                 //NOOP: @typeof isn't added anymore, see above for reason
                                 //propElement.attr(TYPEOF_ATTR, newValueTerm.dataType[TERM_NAME_FIELD]);
                             }
@@ -367,14 +368,14 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                                 {
                                     if (val && val != '') {
 
+                                        //for now, we just use the (possibly relative) URI as the link name...
+                                        var linkName = val;
+
                                         //detect an absolute URL
                                         //see http://stackoverflow.com/questions/10687099/how-to-test-if-a-url-string-is-absolute-or-relative
-                                        var absRegex = new RegExp('^(?:[a-z]+:)?//', 'i');
-                                        var isAbsolute = absRegex.test(val);
+                                        var isAbsolute = new RegExp('^(?:[a-z]+:)?//', 'i').test(val);
 
                                         propElement.attr(RESOURCE_ATTR, val);
-                                        //for now, we just use the URI as the link name...
-                                        var linkName = val;
                                         propElement.html('<a href="' + val + '"' + (isAbsolute ? ' target="_blank"' : '') + '>' + linkName + '</a>');
                                     }
                                     else {
