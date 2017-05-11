@@ -4,7 +4,7 @@
 
   <groupId>com.beligum.blocks</groupId>
   <artifactId>blocks-imports-fact</artifactId>
-  <version>1.0.4-SNAPSHOT</version>
+  <version>1.0.4</version>
   
   <url>http://www.beligum.com</url>
   
@@ -27,7 +27,7 @@
       <dependency>
           <groupId>com.beligum.blocks</groupId>
           <artifactId>blocks-core</artifactId>
-          <version>0.3.7</version>
+          <version>0.3.20</version>
       </dependency>
 
       <dependency>

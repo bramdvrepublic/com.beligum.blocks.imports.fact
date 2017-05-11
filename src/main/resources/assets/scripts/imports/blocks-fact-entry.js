@@ -14,6 +14,8 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
     var TYPEOF_ATTR = "typeof";
     var RESOURCE_ATTR = "resource";
     var CONTENT_ATTR = "content";
+    var HTML_LANGUAGE_ATTR = "lang";
+    var LANGUAGE_ATTR = "lang";
     //makes sense to use the curie name of the terms and classes in the ontologies; it's short and future-flexible
     var TERM_NAME_FIELD = "curieName";
 
@@ -155,6 +157,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                     //closures are hooked to it,
 
                     var defaultValue = FactMessages.widgetEntryDefaultValue;
+
                     if (!skipHtmlChange) {
                         //first copy the attributes to remove if we don't do this it causes problems
                         //iterating over the array we're removing elements from
@@ -210,6 +213,22 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
 
                             //we need to add this class to have it picked up by widget-specific modules (like the editor)
                             propElement.addClass(newValueTerm.widgetType);
+                        }
+
+                        //additional tweaking based on the datatype
+                        switch (newValueTerm.dataType[TERM_NAME_FIELD]) {
+                            // There are two special cases when it comes to languages: xsd:string and rdf:langString
+                            // (see the comments on RDF.LANGSTRING for a detailed explanation)
+                            // We have to remove the explicit datatype in case of a rdf:langString to activate the @lang attribute
+                            // (here, explicitly, or inherited from the <html> tag).
+                            // In case of the xsd:string datatype, setting it explicitly will undo any (ex/implicit) language set.
+                            //
+                            //Note that we don't have to remove previous languages because all properties have been wiped above
+                            case 'rdf:langString':
+
+                                propElement.removeAttr(DATATYPE_ATTR);
+
+                                break;
                         }
                     }
 
