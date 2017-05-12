@@ -20,8 +20,8 @@ import org.apache.commons.lang.StringUtils;
 import java.io.IOException;
 import java.net.URI;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAccessor;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Locale;
@@ -137,7 +137,7 @@ public class Controller extends DefaultTemplateController
                             case Time:
                             case DateTime:
                                 //note that the value is always stored in UTC zone (so the zone of this ZonedDateTime below should always be UTC)
-                                ZonedDateTime value = ZonedDateTime.parse(content, DateTimeFormatter.ISO_DATE_TIME);
+                                TemporalAccessor value = DateTimeFormatter.ISO_DATE_TIME.parse(content);
                                 //this flag only controls how the value above is rendered out to the html, not how it's stored
                                 ZoneId zone = RdfTools.parseRdfaBoolean(propertyEl.getAttributeValue(INPUT_TYPE_TIME_GMT_ATTR)) ? UTC : ZoneId.systemDefault();
 

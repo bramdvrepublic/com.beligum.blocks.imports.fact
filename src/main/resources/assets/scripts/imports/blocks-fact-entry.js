@@ -136,10 +136,11 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                     //that attribute has just been set (since we requested it by passing PROPERTY_ATTR to addUniqueAttributeValueAsync).
                     //When all three are ok, we conclude nothing needs to be changed and it's not a 'real change', but rather a 'focus' event.
                     var skipHtmlChange = false;
+                    //set this to true if you want to bypass the setting of the value to the default value
+                    var skipHtmlDefault = false;
+
                     if (
                         propElement.hasAttribute(PROPERTY_ATTR) && propElement.attr(PROPERTY_ATTR) == newValueTerm[TERM_NAME_FIELD] &&
-                        //note that the text() function removes the <p></p> tags
-                        $.trim(labelElement.text()) === newValueTerm.label &&
                         // Since we abandoned the use of @typeof, we abandoned this sub-check as well; seems to be working fine.
                         //(
                         //    //we either need a datatype (for literals) or a typeof (for references)
@@ -150,6 +151,18 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                     ) {
                         //we can't return straight away because we need to initialize the extra controls in the sidebar
                         skipHtmlChange = true;
+                    }
+
+                    //some outlier cases to update the html after all
+                    if (skipHtmlChange) {
+                        //By checking this, we allow changed property labels in the back-end to propagate to the entries in the front-end
+                        // if they're focussed.
+                        //note that the text() function removes the <p></p> tags
+                        if ($.trim(labelElement.text()) !== newValueTerm.label) {
+                            skipHtmlChange = false;
+                            //only change the label, not the value
+                            skipHtmlDefault = true;
+                        }
                     }
 
                     //If we reach this point, the element needs to change. Because there's a lot of attributes coming in from other plugin modules,
@@ -465,7 +478,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                             break;
                     }
 
-                    if (!skipHtmlChange) {
+                    if (!skipHtmlChange && !skipHtmlDefault) {
                         propElement.html(defaultValue);
                     }
 
