@@ -51,7 +51,10 @@ blocks-fact-entry {
       }
       &[content='false'] {
         .@{INPUT_TYPE_BOOLEAN_VALUE_CLASS}:before {
-          content: @fa-var-times;
+          //content: @fa-var-times;
+          //content: @fa-var-minus;
+          //content: '-';//dash
+          content: '\2013';//ndash (longer dash)
         }
       }
       &[content='true'] {
