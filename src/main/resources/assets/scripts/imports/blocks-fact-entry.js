@@ -275,7 +275,8 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                         //we default to using the local timezone for entering times
                         _this._gmtSelected = false;
                     }
-
+                    defaultValue = newValueTerm.defaultValue;
+                    if (!defaultValue) {
                     switch (newValueTerm.widgetType) {
                         case BlocksConstants.INPUT_TYPE_EDITOR:
                             defaultValue = FactMessages.textEntryDefaultValue;
@@ -477,6 +478,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                             defaultValue = FactMessages.textEntryDefaultValue;
                             break;
                     }
+                }
 
                     if (!skipHtmlChange && !skipHtmlDefault) {
                         propElement.html(defaultValue);

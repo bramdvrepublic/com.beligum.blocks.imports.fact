@@ -27,7 +27,7 @@
       <dependency>
           <groupId>com.beligum.blocks</groupId>
           <artifactId>blocks-core</artifactId>
-          <version>0.3.21</version>
+          <version>0.3.32-SNAPSHOT</version>
       </dependency>
 
       <dependency>
