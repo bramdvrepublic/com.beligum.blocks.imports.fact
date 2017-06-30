@@ -275,14 +275,13 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                         //we default to using the local timezone for entering times
                         _this._gmtSelected = false;
                     }
-                    defaultValue = newValueTerm.defaultValue;
-                    if (!defaultValue) {
+
                     switch (newValueTerm.widgetType) {
                         case BlocksConstants.INPUT_TYPE_EDITOR:
-                            defaultValue = FactMessages.textEntryDefaultValue;
+                            defaultValue =  newValueTerm.defaultValue || FactMessages.textEntryDefaultValue;
                             break;
                         case BlocksConstants.INPUT_TYPE_INLINE_EDITOR:
-                            defaultValue = FactMessages.textEntryDefaultValue;
+                            defaultValue = newValueTerm.defaultValue || FactMessages.textEntryDefaultValue;
                             //we're not a span, so force inline
                             propElement.attr(TextConstants.OPTIONS_ATTR, TextConstants.OPTIONS_FORCE_INLINE + " " + TextConstants.OPTIONS_NO_TOOLBAR);
                             break;
@@ -290,7 +289,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                             combobox.after(_this._createBooleanWidget(block, propElement, CONTENT_ATTR));
                             break;
                         case BlocksConstants.INPUT_TYPE_NUMBER:
-                            defaultValue = FactMessages.numberEntryDefaultValue;
+                            defaultValue = newValueTerm.defaultValue || FactMessages.numberEntryDefaultValue;
                             combobox.after(_this._createInputWidget(block, propElement, CONTENT_ATTR, newValueTerm.widgetType, 'number', {}, 'Value', defaultValue,
                                 function setterFunction(propElement, defaultValue, newValue)
                                 {
@@ -308,7 +307,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                                 null));
                             break;
                         case BlocksConstants.INPUT_TYPE_DATE:
-                            defaultValue = FactMessages.dateEntryDefaultValue;
+                            defaultValue = newValueTerm.defaultValue || FactMessages.dateEntryDefaultValue;
                             _this._dateTimeEnum = DATE_TIME_ENUM_DATE;
                             _this._dateTimeFormat = DATE_FORMAT;
                             _this._timezoneFormat = null;
@@ -320,7 +319,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                                 dateTimeSetterFunction, dateTimeWidgetSetterFilterFunction, null));
                             break;
                         case BlocksConstants.INPUT_TYPE_TIME:
-                            defaultValue = FactMessages.timeEntryDefaultValue;
+                            defaultValue = newValueTerm.defaultValue || FactMessages.timeEntryDefaultValue;
                             _this._dateTimeEnum = DATE_TIME_ENUM_TIME;
                             _this._dateTimeFormat = TIME_FORMAT;
                             _this._timezoneFormat = TIMEZONE_FORMAT;
@@ -330,7 +329,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                                 dateTimeSetterFunction, dateTimeWidgetSetterFilterFunction, dateTimeExtraHtmlFunction));
                             break;
                         case BlocksConstants.INPUT_TYPE_DATETIME:
-                            defaultValue = FactMessages.datetimeEntryDefaultValue;
+                            defaultValue = newValueTerm.defaultValue || FactMessages.datetimeEntryDefaultValue;
                             _this._dateTimeEnum = DATE_TIME_ENUM_DATETIME;
                             _this._dateTimeFormat = DATE_TIME_FORMAT;
                             _this._timezoneFormat = TIMEZONE_FORMAT;
@@ -340,7 +339,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                                 dateTimeSetterFunction, dateTimeWidgetSetterFilterFunction, dateTimeExtraHtmlFunction));
                             break;
                         case BlocksConstants.INPUT_TYPE_COLOR:
-                            defaultValue = FactMessages.colorEntryDefaultValue;
+                            defaultValue = newValueTerm.defaultValue || FactMessages.colorEntryDefaultValue;
                             combobox.after(_this._createInputWidget(block, propElement, CONTENT_ATTR, newValueTerm.widgetType, 'color', {}, 'Color', defaultValue,
                                 function setterFunction(propElement, defaultValue, newValue)
                                 {
@@ -360,7 +359,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
 
                         case BlocksConstants.INPUT_TYPE_ENUM:
 
-                            defaultValue = FactMessages.enumEntryDefaultValue;
+                            defaultValue = newValueTerm.defaultValue || FactMessages.enumEntryDefaultValue;
                             var endpointURL = newValueTerm.widgetConfig[BlocksConstants.INPUT_TYPE_CONFIG_RESOURCE_AC_ENDPOINT];
 
                             var changeListener = function (oldValueTerm, newValueTerm)
@@ -383,7 +382,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
 
                         case BlocksConstants.INPUT_TYPE_URI:
 
-                            defaultValue = FactMessages.uriEntryDefaultValue;
+                            defaultValue = newValueTerm.defaultValue || FactMessages.uriEntryDefaultValue;
 
                             // We need to also add the hyperlink href as a property-value, because when we wrap the <a> tag with a <div property=""> tag,
                             // the content of the property tag (eg. the entire <a> tag) gets serialized by the RDFa parser as a I18N-string, using the human readable
@@ -426,7 +425,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
 
                         case BlocksConstants.INPUT_TYPE_RESOURCE:
 
-                            defaultValue = FactMessages.resourceEntryDefaultValue;
+                            defaultValue = newValueTerm.defaultValue || FactMessages.resourceEntryDefaultValue;
                             combobox.after(_this.createAutocompleteWidget(propElement, RESOURCE_ATTR, newValueTerm.widgetType, newValueTerm.widgetConfig, 'Resource', null,
                                 //Note: this function receives the entire object as it was returned from the server endpoint (class AutocompleteSuggestion)
                                 function setterFunction(propElement, newValue)
@@ -478,7 +477,6 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                             defaultValue = FactMessages.textEntryDefaultValue;
                             break;
                     }
-                }
 
                     if (!skipHtmlChange && !skipHtmlDefault) {
                         propElement.html(defaultValue);
