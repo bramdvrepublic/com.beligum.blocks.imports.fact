@@ -17,7 +17,7 @@
 /**
  * Created by bram on 25/02/16.
  */
-base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Block", "base.core.Commons", "blocks.core.Sidebar", "messages.base.core", "constants.blocks.core", "messages.blocks.core", "constants.blocks.imports.fact", "messages.blocks.imports.fact", "constants.blocks.imports.text", function (Class, Block, Commons, Sidebar, BaseMessages, BlocksConstants, BlocksMessages, FactConstants, FactMessages, TextConstants)
+base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Block", "base.core.Commons", "blocks.core.Sidebar", "messages.base.core", "constants.blocks.core", "messages.blocks.core", "constants.blocks.imports.fact", "messages.blocks.imports.fact", "constants.blocks.imports.text", "blocks.core.Notification", function (Class, Block, Commons, Sidebar, BaseMessages, BlocksConstants, BlocksMessages, FactConstants, FactMessages, TextConstants, Notification)
 {
     var BlocksFactEntry = this;
     this.TAGS = ["blocks-fact-entry"];
@@ -34,6 +34,8 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
     var LANGUAGE_ATTR = "lang";
     //makes sense to use the curie name of the terms and classes in the ontologies; it's short and future-flexible
     var TERM_NAME_FIELD = "curieName";
+    //we'll use the 'title' property of a term as the label of that property
+    var TERM_LABEL_FIELD = "title";
 
     //Formats for human readable date & time
     var DATE_TIME_LOCALE = BaseMessages.locale;
@@ -64,14 +66,15 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
     (this.Class = Class.create(Block.Class, {
 
         //-----VARIABLES-----
+        BlocksFactEntryConfig: this,
         //this contains a mapping between ontology urls and the data objects returned by the server
         _termMappings: null,
-        _gmtSelected: false,
-        _dateTimeEnum: null,
-        _dateTimeFormat: null,
-        _timezoneFormat: null,
-        _dateTimeValueFormat: null,
-        _dateTimeWidgetFormat: null,
+        //_gmtSelected: false,
+        //_dateTimeEnum: null,
+        //_dateTimeFormat: null,
+        //_timezoneFormat: null,
+        //_dateTimeValueFormat: null,
+        //_dateTimeWidgetFormat: null,
 
         //-----CONSTRUCTORS-----
         constructor: function ()
@@ -113,14 +116,15 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 endpointURL += "?" + BlocksConstants.RDF_RES_TYPE_CURIE_PARAM + "=" + pageTypeof;
             }
 
-            var combobox = this.addUniqueAttributeValueAsync(Sidebar, propElement, FactMessages.propertyTypeLabel, PROPERTY_ATTR, endpointURL, "title", TERM_NAME_FIELD,
+            var combobox = this.addUniqueAttributeValueAsync(Sidebar, propElement, FactMessages.propertyTypeLabel, PROPERTY_ATTR, endpointURL, TERM_LABEL_FIELD, TERM_NAME_FIELD,
                 function changeListener(oldValueTerm, newValueTerm)
                 {
                     //this is a good place to iterate the fact entries and mark the doubles
                     //(don't worry if it gets called multiple times, I just hope it's not too slow)
                     //TODO: one issue remains if you drag an entry out (or in) a sequence, you need to focus it before it updates...
                     var prev = null;
-                    $('blocks-fact-entry [data-property=' + FactConstants.FACT_ENTRY_VALUE_CLASS + '] [' + FactConstants.FACT_ENTRY_PROPERTY_CLASS + ']').each(function ()
+                    //Note: the first-child selector makes sure the sub-properties of possible object widgets don't get selected
+                    $('blocks-fact-entry [data-property=' + FactConstants.FACT_ENTRY_VALUE_CLASS + '] [' + FactConstants.FACT_ENTRY_PROPERTY_CLASS + ']:first-child').each(function ()
                     {
                         var el = $(this);
 
@@ -151,6 +155,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                     //Note that we can't just use the property attribute to check if everything is ok, because when this method is called,
                     //that attribute has just been set (since we requested it by passing PROPERTY_ATTR to addUniqueAttributeValueAsync).
                     //When all three are ok, we conclude nothing needs to be changed and it's not a 'real change', but rather a 'focus' event.
+
                     var skipHtmlChange = false;
                     //set this to true if you want to bypass the setting of the value to the default value
                     var skipHtmlDefault = false;
@@ -169,11 +174,10 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                         skipHtmlChange = true;
                     }
 
-                    //some outlier cases to update the html after all
+                    //some outlier cases to update the html after all (trial-error)
                     if (skipHtmlChange) {
                         //By checking this, we allow changed property labels in the back-end to propagate to the entries in the front-end
-                        // if they're focussed.
-                        //note that the text() function removes the <p></p> tags
+                        // if they're focussed. Note that the text() function removes the <p></p> tags
                         if ($.trim(labelElement.text()) !== newValueTerm.label) {
                             skipHtmlChange = false;
                             //only change the label, not the value
@@ -185,324 +189,363 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                     //our approach is to strip all attributes and html off and start over. Note that we can't just replace the element because too many other
                     //closures are hooked to it,
 
-                    var defaultValue = FactMessages.widgetEntryDefaultValue;
-
-                    if (!skipHtmlChange) {
-                        //first copy the attributes to remove if we don't do this it causes problems
-                        //iterating over the array we're removing elements from
-                        var attributes = $.map(propElement[0].attributes, function (item)
-                        {
-                            return item.name;
-                        });
-                        // now remove the attributes
-                        $.each(attributes, function (i, item)
-                        {
-                            propElement.removeAttr(item);
-                        });
-
-                        //here, we have a clean element, so we can start building again...
-                        propElement.addClass(FactConstants.FACT_ENTRY_PROPERTY_CLASS);
-                        //Note: we moved this to after the switch to override the default value when a certain type was selected in the combobox
-                        //propElement.html(defaultValue);
-
-                        //-- Initialize the html
-                        //we don't really allow this for now (it resets the html back to the default state if we pass undefined or null as newValue)
-                        if (!newValueTerm) {
-                            labelElement.html(FactMessages.widgetEntryDefaultLabel);
-                        }
-                        else {
-                            //set the label html (note: if you change this, make sure the .text() function above in the skipHtmlChange check still works...)
-                            labelElement.html("<p>" + newValueTerm.label + "</p>");
-
-                            //Initialize the property attributes
-                            //Note that we also could use the 'rel' attribute instead of 'property' when working with resources (not for literals)
-                            // see https://www.w3.org/TR/rdfa-syntax/#chaining-with-property-and-typeof
-                            // "The main differences between @property and @rel (or @rev) is that the former does not induce chaining.
-                            //  (see this URL for what chaining is: https://www.w3.org/TR/rdfa-syntax/#inheriting-subject-from-resource)"
-                            //Also note that we abanoned the use of @typeof to avoid data duplication and because it's never used like this
-                            // in literature examples. (@typeof is rather used to create blank nodes while creating a new resource), so the
-                            // explanation in the url above about equality of @property and @rel while using @typeof is't valid anymore.
-                            //
-                            //More info from https://www.w3.org/TR/rdfa-syntax/#object-resolution-for-the-property-attribute
-                            // "An object literal will be generated when @property is present and no resource attribute is present."
-                            // illustrates the difference between resource and literal handling.
-                            propElement.attr(PROPERTY_ATTR, newValueTerm[TERM_NAME_FIELD]);
-
-                            //If we're dealing with a reference to another resource, we use the typeof attribute,
-                            //otherwise (when dealing with a literal), we use the datatype attribute.
-                            //We compare the use of @typeof (together with @resource) as the 'reference-equivalent' of using @datatype together with a literal.
-                            //Also note that we treat a ANY_URI type the same way as a resource for serialization reasons (it results in the RDF we expect)
-                            if (newValueTerm.widgetType == BlocksConstants.INPUT_TYPE_RESOURCE || newValueTerm.widgetType == BlocksConstants.INPUT_TYPE_URI) {
-                                //NOOP: @typeof isn't added anymore, see above for reason
-                                //propElement.attr(TYPEOF_ATTR, newValueTerm.dataType[TERM_NAME_FIELD]);
-                            }
-                            else {
-                                propElement.attr(DATATYPE_ATTR, newValueTerm.dataType[TERM_NAME_FIELD]);
-                            }
-
-                            //we need to add this class to have it picked up by widget-specific modules (like the editor)
-                            propElement.addClass(newValueTerm.widgetType);
-                        }
-
-                        //additional tweaking based on the datatype
-                        switch (newValueTerm.dataType[TERM_NAME_FIELD]) {
-                            // There are two special cases when it comes to languages: xsd:string and rdf:langString
-                            // (see the comments on RDF.LANGSTRING for a detailed explanation)
-                            // We have to remove the explicit datatype in case of a rdf:langString to activate the @lang attribute
-                            // (here, explicitly, or inherited from the <html> tag).
-                            // In case of the xsd:string datatype, setting it explicitly will undo any (ex/implicit) language set.
-                            //
-                            //Note that we don't have to remove previous languages because all properties have been wiped above
-                            case 'rdf:langString':
-
-                                propElement.removeAttr(DATATYPE_ATTR);
-
-                                break;
-                        }
-                    }
-
-                    //-- Initialize the sidebar
-                    //this will reset any previously added widgets after the combobox
-                    combobox.nextAll().remove();
-
-                    //little odd, but didn't find any other way: we 'localize' the functions with the variable _this in the closure
-                    //because I didn't know how to get to the correct _this inside these 3 functions
-                    var dateTimeSetterFunction = function (propElement, defaultValue, newValue)
-                    {
-                        return _this._dateTimeSetterFunction(_this, propElement, defaultValue, newValue);
-                    };
-                    var dateTimeWidgetSetterFilterFunction = function (contentValue)
-                    {
-                        return _this._dateTimeWidgetSetterFilterFunction(_this, contentValue);
-                    };
-                    var dateTimeExtraHtmlFunction = function (updateCallback)
-                    {
-                        return _this._dateTimeExtraHtmlFunction(_this, updateCallback);
-                    };
-
-                    //this is a general initialization for time and dateTime, but doesn't harm any other types
-                    //this will be the variable we use to save the state of the GMT checkbox
-                    //Note that all values are saved in UTC, this is just the flag to control how it's displayed to the user
-                    if (propElement.hasAttribute(BlocksConstants.INPUT_TYPE_TIME_GMT_ATTR)) {
-                        //see the setter function below: this should be
-                        _this._gmtSelected = propElement.attr(BlocksConstants.INPUT_TYPE_TIME_GMT_ATTR) === BOOLEAN_ATTR_TRUE;
-                    }
-                    else {
-                        //we default to using the local timezone for entering times
-                        _this._gmtSelected = false;
-                    }
-
-                    switch (newValueTerm.widgetType) {
-                        case BlocksConstants.INPUT_TYPE_EDITOR:
-                            defaultValue = FactMessages.textEntryDefaultValue;
-                            break;
-                        case BlocksConstants.INPUT_TYPE_INLINE_EDITOR:
-                            defaultValue = FactMessages.textEntryDefaultValue;
-                            //we're not a span, so force inline
-                            propElement.attr(TextConstants.OPTIONS_ATTR, TextConstants.OPTIONS_FORCE_INLINE + " " + TextConstants.OPTIONS_NO_TOOLBAR);
-                            break;
-                        case BlocksConstants.INPUT_TYPE_BOOLEAN:
-                            combobox.after(_this._createBooleanWidget(block, propElement, CONTENT_ATTR));
-                            break;
-                        case BlocksConstants.INPUT_TYPE_NUMBER:
-                            defaultValue = FactMessages.numberEntryDefaultValue;
-                            combobox.after(_this._createInputWidget(block, propElement, CONTENT_ATTR, newValueTerm.widgetType, 'number', {}, 'Value', defaultValue,
-                                function setterFunction(propElement, defaultValue, newValue)
-                                {
-                                    if (newValue && newValue != '') {
-                                        propElement.attr(CONTENT_ATTR, newValue);
-                                        propElement.html(newValue);
-                                    }
-                                    else {
-                                        //don't remove the attr, set it to empty (or the help text in the HTML will end up as the value)
-                                        propElement.attr(CONTENT_ATTR, '');
-                                        propElement.html(defaultValue);
-                                    }
-                                },
-                                null,
-                                null));
-                            break;
-                        case BlocksConstants.INPUT_TYPE_DATE:
-                            defaultValue = FactMessages.dateEntryDefaultValue;
-                            _this._dateTimeEnum = DATE_TIME_ENUM_DATE;
-                            _this._dateTimeFormat = DATE_FORMAT;
-                            _this._timezoneFormat = null;
-                            _this._dateTimeValueFormat = DATE_VALUE_FORMAT;
-                            _this._dateTimeWidgetFormat = DATE_WIDGET_FORMAT;
-                            //Note that we save all date values as GMT (if you need timezone functionality, use the dateTime widget)
-                            _this._gmtSelected = true;
-                            combobox.after(_this._createInputWidget(block, propElement, CONTENT_ATTR, newValueTerm.widgetType, 'date', {}, 'Date', defaultValue,
-                                dateTimeSetterFunction, dateTimeWidgetSetterFilterFunction, null));
-                            break;
-                        case BlocksConstants.INPUT_TYPE_TIME:
-                            defaultValue = FactMessages.timeEntryDefaultValue;
-                            _this._dateTimeEnum = DATE_TIME_ENUM_TIME;
-                            _this._dateTimeFormat = TIME_FORMAT;
-                            _this._timezoneFormat = TIMEZONE_FORMAT;
-                            _this._dateTimeValueFormat = TIME_VALUE_FORMAT;
-                            _this._dateTimeWidgetFormat = TIME_WIDGET_FORMAT;
-                            combobox.after(_this._createInputWidget(block, propElement, CONTENT_ATTR, newValueTerm.widgetType, 'time', {}, 'Time', defaultValue,
-                                dateTimeSetterFunction, dateTimeWidgetSetterFilterFunction, dateTimeExtraHtmlFunction));
-                            break;
-                        case BlocksConstants.INPUT_TYPE_DATETIME:
-                            defaultValue = FactMessages.datetimeEntryDefaultValue;
-                            _this._dateTimeEnum = DATE_TIME_ENUM_DATETIME;
-                            _this._dateTimeFormat = DATE_TIME_FORMAT;
-                            _this._timezoneFormat = TIMEZONE_FORMAT;
-                            _this._dateTimeValueFormat = DATE_TIME_VALUE_FORMAT;
-                            _this._dateTimeWidgetFormat = DATE_TIME_WIDGET_FORMAT;
-                            combobox.after(_this._createInputWidget(block, propElement, CONTENT_ATTR, newValueTerm.widgetType, 'datetime-local', {}, 'Date and time', defaultValue,
-                                dateTimeSetterFunction, dateTimeWidgetSetterFilterFunction, dateTimeExtraHtmlFunction));
-                            break;
-                        case BlocksConstants.INPUT_TYPE_COLOR:
-                            defaultValue = FactMessages.colorEntryDefaultValue;
-                            combobox.after(_this._createInputWidget(block, propElement, CONTENT_ATTR, newValueTerm.widgetType, 'color', {}, 'Color', defaultValue,
-                                function setterFunction(propElement, defaultValue, newValue)
-                                {
-                                    if (newValue && newValue != '' && newValue.charAt(0) == '#') {
-                                        propElement.attr(CONTENT_ATTR, newValue);
-                                        propElement.html('<div class="' + BlocksConstants.INPUT_TYPE_COLOR_VALUE_CLASS + '" style="background-color: ' + newValue + '"></div>');
-                                    }
-                                    else {
-                                        //don't remove the attr, set it to empty (or the help text in the HTML will end up as the value)
-                                        propElement.attr(CONTENT_ATTR, '');
-                                        propElement.html(defaultValue);
-                                    }
-                                },
-                                null,
-                                null));
-                            break;
-
-                        case BlocksConstants.INPUT_TYPE_ENUM:
-
-                            defaultValue = FactMessages.enumEntryDefaultValue;
-                            var endpointURL = newValueTerm.widgetConfig[BlocksConstants.INPUT_TYPE_CONFIG_RESOURCE_AC_ENDPOINT];
-
-                            var changeListener = function (oldValueTerm, newValueTerm)
-                            {
-                                if (newValueTerm && newValueTerm.title != '') {
-                                    //since the defaultValue is wrapped in <p> and enums are always (?) xsd:strings, we uniformly wrap the values with <p>
-                                    propElement.html('<p>' + newValueTerm.title + '</p>');
-                                }
-                                else {
-                                    propElement.html(defaultValue);
-                                }
-                            };
-
-                            //we'll use the name of the property as the label (capitalized)
-                            var label = newValueTerm.label.charAt(0).toUpperCase() + newValueTerm.label.slice(1);
-                            combobox.after(_this.addUniqueAttributeValueAsync(Sidebar, propElement, label, CONTENT_ATTR, endpointURL, "title", "value", changeListener));
-                            //call it once to set the default value
-                            changeListener();
-                            break;
-
-                        case BlocksConstants.INPUT_TYPE_URI:
-
-                            defaultValue = FactMessages.uriEntryDefaultValue;
-
-                            // We need to also add the hyperlink href as a property-value, because when we wrap the <a> tag with a <div property=""> tag,
-                            // the content of the property tag (eg. the entire <a> tag) gets serialized by the RDFa parser as a I18N-string, using the human readable
-                            // text of the hyperlink as a value (instead of using the href value and serializing it as a URI). This is because the property attribute is set on the
-                            // wrapping <div> instead of on the <a> tag.
-                            //Note: from the RDFa docs: "@content is used to indicate the value of a plain literal", and since it's a URI, we add it as a resource value
-                            var currentUri = propElement.attr(RESOURCE_ATTR);
-                            var inputActions = _this.buildInputActions(Sidebar, true, false, currentUri);
-                            var inputbox = _this.createTextInput(Sidebar,
-                                function getterFunction()
-                                {
-                                    return propElement.attr(RESOURCE_ATTR);
-                                },
-                                function setterFunction(val)
-                                {
-                                    if (val && val != '') {
-
-                                        //for now, we just use the (possibly relative) URI as the link name...
-                                        var linkName = val;
-
-                                        //detect an absolute URL
-                                        //see http://stackoverflow.com/questions/10687099/how-to-test-if-a-url-string-is-absolute-or-relative
-                                        var isAbsolute = new RegExp('^(?:[a-z]+:)?//', 'i').test(val);
-
-                                        propElement.attr(RESOURCE_ATTR, val);
-                                        propElement.html('<a href="' + val + '"' + (isAbsolute ? ' target="_blank"' : '') + '>' + linkName + '</a>');
-                                    }
-                                    else {
-                                        //don't remove the attr, set it to empty (or the help text in the HTML will end up as the value)
-                                        propElement.attr(RESOURCE_ATTR, '');
-                                        propElement.html(defaultValue);
-                                    }
-                                },
-                                "URI", "Paste or type a link", false, inputActions
-                            );
-
-                            combobox.after(inputbox);
-
-                            break;
-
-                        case BlocksConstants.INPUT_TYPE_RESOURCE:
-
-                            defaultValue = FactMessages.resourceEntryDefaultValue;
-                            combobox.after(_this.createAutocompleteWidget(propElement, RESOURCE_ATTR, newValueTerm.widgetType, newValueTerm.widgetConfig, 'Resource', null,
-                                //Note: this function receives the entire object as it was returned from the server endpoint (class AutocompleteSuggestion)
-                                function setterFunction(propElement, newValue)
-                                {
-                                    if (newValue && newValue.label != '') {
-
-                                        //the real value of the property is the remote resource id
-                                        //A nice illustration of this use is here: https://www.w3.org/TR/rdfa-syntax/#inheriting-subject-from-resource
-                                        //
-                                        //Regarding the relation between @resource, @href and @src, the docs say the following:
-                                        // "If no @resource is present, then @href or @src are next in priority order for setting the object."
-                                        // (see https://www.w3.org/TR/rdfa-syntax/#using-href-or-src-to-set-the-object)
-                                        // thus supplying both a @resource with a wrapped @href as below is valid.
-                                        propElement.attr(RESOURCE_ATTR, newValue.resourceUri);
-
-                                        var labelHtml = newValue.label;
-                                        //if the value has an image, it takes precedence of the label and we render an image instead of text
-                                        if (newValue.image) {
-                                            //note that alt is mandatory, but title provides a nice tooltip when hovering
-                                            labelHtml = '<img src="' + newValue.image + '" alt="' + newValue.label + '" title="' + newValue.label + '">';
-                                        }
-
-                                        //if the value has a link, let's render a hyperlink
-                                        if (newValue.link) {
-                                            var link = $('<a href="' + newValue.link + '">' + labelHtml + '</a>');
-                                            //little trick to get the hostname of an url: put it in a link element (which we need anyway) and query for the raw JS hostname
-                                            //also note that we can force an external link server side with the externalLink property
-                                            if (newValue.externalLink || link[0].hostname != document.location.hostname) {
-                                                link.attr("target", "_blank");
-                                            }
-                                            propElement.html(link);
-                                        }
-                                        else {
-                                            propElement.html(labelHtml);
-                                        }
-                                    }
-                                    else {
-                                        //don't remove the attr, set it to empty (or the help text in the HTML will end up as the value)
-                                        propElement.attr(RESOURCE_ATTR, '');
-                                        propElement.html(defaultValue);
-                                    }
-                                }));
-                            break;
-
-                        //Note: we need this default section to remove the italic <i> tags from the default value
-                        default:
-                            Logger.warn("Encountered unsupported widget type and using default value, hope this is ok; " + newValueTerm.widgetType);
-                            //I guess this (using text) is ok?
-                            defaultValue = FactMessages.textEntryDefaultValue;
-                            break;
-                    }
-
-                    if (!skipHtmlChange && !skipHtmlDefault) {
-                        propElement.html(defaultValue);
-                    }
+                    //setup the html property element
+                    _this._updatePropertyElement(_this, false, skipHtmlChange, skipHtmlDefault, labelElement, propElement, newValueTerm, combobox);
 
                 });
 
             return combobox;
         },
-        _createBooleanWidget: function (block, propElement, contentAttr)
+        _updatePropertyElement: function(_this, inSidebar, skipHtmlChange, skipHtmlDefault, labelElement, propElement, valueTerm, sidebarParent)
+        {
+            if (!skipHtmlChange) {
+
+                //this will strip all attributes while keeping the element reference intact
+                _this._stripAttributes(propElement);
+
+                //here, we have a clean element, so we can start building again...
+                propElement.addClass(FactConstants.FACT_ENTRY_PROPERTY_CLASS);
+                //Note: we moved this to after the switch to override the default value when a certain type was selected in the combobox
+                //propElement.html(defaultValue);
+
+                //-- Initialize the html
+                //we don't really allow this for now (it resets the html back to the default state if we pass undefined or null as newValue)
+                if (!valueTerm) {
+                    labelElement.html(FactMessages.widgetEntryDefaultLabel);
+                }
+                else {
+                    //set the label html (note: if you change this, make sure the .text() function above in the skipHtmlChange check still works...)
+                    labelElement.html("<p>" + valueTerm.label + "</p>");
+
+                    //Initialize the property attributes
+                    //Note that we also could use the 'rel' attribute instead of 'property' when working with resources (not for literals)
+                    // see https://www.w3.org/TR/rdfa-syntax/#chaining-with-property-and-typeof
+                    // "The main differences between @property and @rel (or @rev) is that the former does not induce chaining.
+                    //  (see this URL for what chaining is: https://www.w3.org/TR/rdfa-syntax/#inheriting-subject-from-resource)"
+                    //Also note that we abanoned the use of @typeof to avoid data duplication and because it's never used like this
+                    // in literature examples. (@typeof is rather used to create blank nodes while creating a new resource), so the
+                    // explanation in the url above about equality of @property and @rel while using @typeof is't valid anymore.
+                    //
+                    //More info from https://www.w3.org/TR/rdfa-syntax/#object-resolution-for-the-property-attribute
+                    // "An object literal will be generated when @property is present and no resource attribute is present."
+                    // illustrates the difference between resource and literal handling.
+                    propElement.attr(PROPERTY_ATTR, valueTerm[TERM_NAME_FIELD]);
+
+                    //If we're dealing with a reference to another resource, we use the typeof attribute,
+                    //otherwise (when dealing with a literal), we use the datatype attribute.
+                    //We compare the use of @typeof (together with @resource) as the 'reference-equivalent' of using @datatype together with a literal.
+                    //Also note that we treat a ANY_URI type the same way as a resource for serialization reasons (it results in the RDF we expect)
+                    if (valueTerm.widgetType == BlocksConstants.INPUT_TYPE_RESOURCE || valueTerm.widgetType == BlocksConstants.INPUT_TYPE_URI) {
+                        //NOOP: @typeof isn't added anymore, see above for reason
+                        //propElement.attr(TYPEOF_ATTR, valueTerm.dataType[TERM_NAME_FIELD]);
+                    }
+                    else if (valueTerm.widgetType == BlocksConstants.INPUT_TYPE_OBJECT) {
+                        //we're an 'inline' object, so we need to set the typeof attribute on the property element,
+                        //see https://www.w3.org/TR/rdfa-primer/#internal-references
+                        propElement.attr(TYPEOF_ATTR, valueTerm.dataType[TERM_NAME_FIELD]);
+                    }
+                    else {
+                        propElement.attr(DATATYPE_ATTR, valueTerm.dataType[TERM_NAME_FIELD]);
+                    }
+
+                    //we need to add this class to have it picked up by widget-specific modules (like the editor)
+                    propElement.addClass(valueTerm.widgetType);
+                }
+
+                //additional tweaking based on the datatype
+                switch (valueTerm.dataType[TERM_NAME_FIELD]) {
+                    // There are two special cases when it comes to languages: xsd:string and rdf:langString
+                    // (see the comments on RDF.LANGSTRING for a detailed explanation)
+                    // We have to remove the explicit datatype in case of a rdf:langString to activate the @lang attribute
+                    // (here, explicitly, or inherited from the <html> tag).
+                    // In case of the xsd:string datatype, setting it explicitly will undo any (ex/implicit) language set.
+                    //
+                    //Note that we don't have to remove previous languages because all properties have been wiped above
+                    case 'rdf:langString':
+
+                        propElement.removeAttr(DATATYPE_ATTR);
+
+                        break;
+                }
+            }
+
+            if (sidebarParent) {
+                if (!inSidebar) {
+                    //this will reset any previously added widgets after the combobox
+                    sidebarParent.nextAll().remove();
+                }
+            }
+
+            var widget = _this._createWidget(_this, inSidebar, propElement, valueTerm, sidebarParent);
+
+            //update the inline html with a default value if we need to
+            if (!skipHtmlChange && !skipHtmlDefault) {
+                //so, a default value of null or undefined means: "do nothing, we'll take care of it on our end",
+                //but a value of '' means, clear it
+                if (widget.defaultValue == null || typeof widget.defaultValue === typeof undefined) {
+                    //NOOP
+                }
+                else {
+                    propElement.html(widget.defaultValue);
+                }
+            }
+
+            //add a control to the sidebar if we need to
+            if (widget.element) {
+                if (sidebarParent) {
+                    if (inSidebar) {
+                        sidebarParent.append(widget.element);
+                    }
+                    else {
+                        sidebarParent.after(widget.element);
+                    }
+                }
+            }
+        },
+        _createWidget: function (_this, inSidebar, propElement, newValueTerm, sidebarParent)
+        {
+            var retVal = {
+                defaultValue: FactMessages.widgetEntryDefaultValue,
+                element: null,
+            };
+
+            switch (newValueTerm.widgetType) {
+                case BlocksConstants.INPUT_TYPE_EDITOR:
+                    retVal.defaultValue = FactMessages.textEntryDefaultValue;
+                    retVal.element = _this._createEditorWidget(inSidebar, propElement, newValueTerm, retVal.defaultValue);
+
+                    break;
+                case BlocksConstants.INPUT_TYPE_INLINE_EDITOR:
+                    retVal.defaultValue = FactMessages.textEntryDefaultValue;
+                    //we're not a span, so force inline mode
+                    propElement.attr(TextConstants.OPTIONS_ATTR, TextConstants.OPTIONS_FORCE_INLINE + " " + TextConstants.OPTIONS_NO_TOOLBAR);
+                    retVal.element = _this._createInlineEditorWidget(inSidebar, propElement, newValueTerm, retVal.defaultValue);
+
+                    break;
+                case BlocksConstants.INPUT_TYPE_BOOLEAN:
+                    //note: the boolean entry is styled using css based on its attributes, and doesn't have real html content,
+                    // so make sure the html is wiped clean
+                    retVal.defaultValue = null;
+                    retVal.element = _this._createBooleanWidget(inSidebar, propElement, newValueTerm, retVal.defaultValue);
+
+                    break;
+                case BlocksConstants.INPUT_TYPE_NUMBER:
+                    retVal.defaultValue = FactMessages.numberEntryDefaultValue;
+                    retVal.element = _this._createInputWidget(inSidebar, propElement, newValueTerm, retVal.defaultValue, 'number', FactMessages.numberEntryLabel,
+                        function setterFunction(propElement, defaultValue, newValue)
+                        {
+                            if (newValue && newValue != '') {
+                                propElement.attr(CONTENT_ATTR, newValue);
+                                propElement.html(newValue);
+                            }
+                            else {
+                                //don't remove the attr, set it to empty (or the help text in the HTML will end up as the value)
+                                propElement.attr(CONTENT_ATTR, '');
+                                propElement.html(defaultValue);
+                            }
+                        },
+                        null,
+                        null);
+
+                    break;
+                case BlocksConstants.INPUT_TYPE_DATE:
+                    retVal.defaultValue = FactMessages.dateEntryDefaultValue;
+                    // _this._dateTimeEnum = DATE_TIME_ENUM_DATE;
+                    // _this._dateTimeFormat = DATE_FORMAT;
+                    // _this._timezoneFormat = null;
+                    // _this._dateTimeValueFormat = DATE_VALUE_FORMAT;
+                    // _this._dateTimeWidgetFormat = DATE_WIDGET_FORMAT;
+
+                    retVal.element = _this._createInputWidget(inSidebar, propElement, newValueTerm, retVal.defaultValue, 'date', FactMessages.dateEntryLabel,
+                        function setterFunction(propElement, defaultValue, newValue)
+                        {
+                            //Note that we save all date values as GMT (if you need timezone functionality, use the dateTime widget)
+                            return _this._dateTimeSetterFunction(_this, propElement, defaultValue, newValue, DATE_TIME_ENUM_DATE, DATE_FORMAT, DATE_VALUE_FORMAT, null, true);
+                        },
+                        function widgetSetterFilterFunction(contentValue)
+                        {
+                            return _this._dateTimeWidgetSetterFilterFunction(_this, propElement, contentValue, DATE_VALUE_FORMAT, DATE_WIDGET_FORMAT, true);
+                        },
+                        null);
+
+                    break;
+                case BlocksConstants.INPUT_TYPE_TIME:
+                    retVal.defaultValue = FactMessages.timeEntryDefaultValue;
+                    // _this._dateTimeEnum = DATE_TIME_ENUM_TIME;
+                    // _this._dateTimeFormat = TIME_FORMAT;
+                    // _this._timezoneFormat = TIMEZONE_FORMAT;
+                    // _this._dateTimeValueFormat = TIME_VALUE_FORMAT;
+                    // _this._dateTimeWidgetFormat = TIME_WIDGET_FORMAT;
+
+                    retVal.element = _this._createInputWidget(inSidebar, propElement, newValueTerm, retVal.defaultValue, 'time', FactMessages.timeEntryLabel,
+                        function setterFunction(propElement, defaultValue, newValue)
+                        {
+                            return _this._dateTimeSetterFunction(_this, propElement, defaultValue, newValue, DATE_TIME_ENUM_TIME, TIME_FORMAT, TIME_VALUE_FORMAT, TIMEZONE_FORMAT, false);
+                        },
+                        function widgetSetterFilterFunction(contentValue)
+                        {
+                            return _this._dateTimeWidgetSetterFilterFunction(_this, propElement, contentValue, TIME_VALUE_FORMAT, TIME_WIDGET_FORMAT, false);
+                        },
+                        function extraHtmlFunction(updateCallback)
+                        {
+                            return _this._dateTimeExtraHtmlFunction(_this, propElement, updateCallback);
+                        }
+                    );
+
+                    break;
+                case BlocksConstants.INPUT_TYPE_DATETIME:
+                    retVal.defaultValue = FactMessages.datetimeEntryDefaultValue;
+                    // _this._dateTimeEnum = DATE_TIME_ENUM_DATETIME;
+                    // _this._dateTimeFormat = DATE_TIME_FORMAT;
+                    // _this._timezoneFormat = TIMEZONE_FORMAT;
+                    // _this._dateTimeValueFormat = DATE_TIME_VALUE_FORMAT;
+                    // _this._dateTimeWidgetFormat = DATE_TIME_WIDGET_FORMAT;
+
+                    retVal.element = _this._createInputWidget(inSidebar, propElement, newValueTerm, retVal.defaultValue, 'datetime-local', FactMessages.dateTimeEntryLabel,
+                        function setterFunction(propElement, defaultValue, newValue)
+                        {
+                            return _this._dateTimeSetterFunction(_this, propElement, defaultValue, newValue, DATE_TIME_ENUM_DATETIME, DATE_TIME_FORMAT, DATE_TIME_VALUE_FORMAT, TIMEZONE_FORMAT, false);
+                        },
+                        function widgetSetterFilterFunction(contentValue)
+                        {
+                            return _this._dateTimeWidgetSetterFilterFunction(_this, propElement, contentValue, DATE_TIME_VALUE_FORMAT, DATE_TIME_WIDGET_FORMAT, false);
+                        },
+                        function extraHtmlFunction(updateCallback)
+                        {
+                            return _this._dateTimeExtraHtmlFunction(_this, propElement, updateCallback);
+                        }
+                    );
+
+                    break;
+                case BlocksConstants.INPUT_TYPE_COLOR:
+                    retVal.defaultValue = FactMessages.colorEntryDefaultValue;
+                    retVal.element = _this._createInputWidget(inSidebar, propElement, newValueTerm, retVal.defaultValue, 'color', FactMessages.colorEntryLabel,
+                        function setterFunction(propElement, defaultValue, newValue)
+                        {
+                            if (newValue && newValue != '' && newValue.charAt(0) == '#') {
+                                propElement.attr(CONTENT_ATTR, newValue);
+                                propElement.html('<div class="' + BlocksConstants.INPUT_TYPE_COLOR_VALUE_CLASS + '" style="background-color: ' + newValue + '"></div>');
+                            }
+                            else {
+                                //don't remove the attr, set it to empty (or the help text in the HTML will end up as the value)
+                                propElement.attr(CONTENT_ATTR, '');
+                                propElement.html(defaultValue);
+                            }
+                        },
+                        null,
+                        null);
+
+                    break;
+
+                case BlocksConstants.INPUT_TYPE_ENUM:
+
+                    retVal.defaultValue = FactMessages.enumEntryDefaultValue;
+                    retVal.element = _this._createEnumWidget(inSidebar, propElement, newValueTerm, retVal.defaultValue);
+
+                    break;
+
+                case BlocksConstants.INPUT_TYPE_URI:
+
+                    retVal.defaultValue = FactMessages.uriEntryDefaultValue;
+                    retVal.element = _this._createUriWidget(inSidebar, propElement, newValueTerm, retVal.defaultValue);
+
+                    break;
+
+                case BlocksConstants.INPUT_TYPE_RESOURCE:
+
+                    retVal.defaultValue = FactMessages.resourceEntryDefaultValue;
+                    retVal.element = _this._createResourceWidget(inSidebar, propElement, newValueTerm, retVal.defaultValue);
+
+                    break;
+
+                case BlocksConstants.INPUT_TYPE_OBJECT:
+
+                    var objDatatypeCurie = newValueTerm.dataType[TERM_NAME_FIELD];
+
+                    //let's create a little group for the config widgets of this object
+                    var objConfigContainer = $('<div class="'+BlocksConstants.PANEL_GROUP_CLASS+'"></div>');
+                    objConfigContainer.append($('<div class="title">' + newValueTerm[TERM_LABEL_FIELD] + '</div>'));
+
+                    retVal.defaultValue = null;
+                    retVal.element = objConfigContainer;
+
+                    //wipe all existing html children
+                    //Note: we can't do that because we want to edit, click away and then edit again
+                    propElement.empty();
+
+                    //ask the server to list all the terms of this property's object data type
+                    $.getJSON(BlocksConstants.RDF_PROPERTIES_ENDPOINT + "?" + BlocksConstants.RDF_RES_TYPE_CURIE_PARAM + "=" + objDatatypeCurie)
+                        .done(function (data)
+                        {
+                            //var comboEntries = [];
+                            $.each(data, function (idx, entry)
+                            {
+                                var objContainerElement = $('<div/>')
+                                    .appendTo(propElement);
+
+                                var objLabelElement = $('<label/>')
+                                    .appendTo(objContainerElement);
+
+                                var objPropElement = $('<div/>')
+                                    .appendTo(objContainerElement);
+
+                                _this._updatePropertyElement(_this, true, false, false, objLabelElement, objPropElement, entry, objConfigContainer);
+
+                            });
+                        })
+                        .fail(function (xhr, textStatus, exception)
+                        {
+                            Notification.error(BlocksMessages.generalServerDataError + (exception ? "; " + exception : ""), xhr);
+                        });
+
+                    break;
+
+                default:
+                    //we stopped allowing unknown types (see below for old code), please implement/catch them all.
+                    Notification.error(Commons.format(FactMessages.unknownWidgetTypeError, newValueTerm.widgetType));
+
+                    //Note: we need this default section to remove the italic <i> tags from the default value
+                    // Logger.warn("Encountered unsupported widget type and using default value, hope this is ok; " + newValueTerm.widgetType);
+                    // //I guess this (using text) is ok?
+                    // retVal.defaultValue = FactMessages.textEntryDefaultValue;
+                    break;
+            }
+
+            return retVal;
+        },
+        _createEditorWidget: function (inSidebar, propElement, valueTerm, defaultValue)
+        {
+            var retVal = null;
+
+            if (inSidebar) {
+                //TODO
+                propElement.html("this is an editor");
+            }
+
+            return retVal;
+        },
+        _createInlineEditorWidget: function (inSidebar, propElement, valueTerm, defaultValue)
+        {
+            var retVal = null;
+
+            if (inSidebar) {
+                retVal = this.createTextInput(Sidebar,
+                    function getterFunction()
+                    {
+                        return propElement.html();
+                    },
+                    function setterFunction(val)
+                    {
+                        propElement.html(val);
+                    },
+                    Commons.capitalize(valueTerm.label),
+                    "", false, null
+                );
+            }
+
+            return retVal;
+        },
+        _createBooleanWidget: function (inSidebar, propElement, valueTerm, defaultValue)
         {
             var CONTENT_VALUE_TRUE = "true";
             var CONTENT_VALUE_FALSE = "false";
@@ -512,20 +555,20 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             var toggleState = function (newState)
             {
                 if (newState) {
-                    propElement.attr(contentAttr, CONTENT_VALUE_TRUE);
+                    propElement.attr(CONTENT_ATTR, CONTENT_VALUE_TRUE);
                 }
                 else {
-                    propElement.attr(contentAttr, CONTENT_VALUE_FALSE);
+                    propElement.attr(CONTENT_ATTR, CONTENT_VALUE_FALSE);
                 }
 
                 //Note: we just create a dummy inner <i>, rest is done in CSS, based on the content attribute
                 propElement.html('<div class="' + BlocksConstants.INPUT_TYPE_BOOLEAN_VALUE_CLASS + '" />');
             };
 
-            var toggleButton = this.createToggleButton("Value",
+            var toggleButton = this.createToggleButton(FactMessages.booleanEntryLabel,
                 function initStateCallback()
                 {
-                    var retVal = propElement.attr(contentAttr) == CONTENT_VALUE_TRUE;
+                    var retVal = propElement.attr(CONTENT_ATTR) == CONTENT_VALUE_TRUE;
 
                     toggleState(retVal);
 
@@ -543,23 +586,18 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
 
             return retVal;
         },
-        _createInputWidget: function (block, propElement, contentAttr, inputTypeConstant, htmlInputType, htmlInputAttrs, labelText, initialValue, setterFunction, widgetSetterFilterFunction, extraHtmlFunction)
+        _createInputWidget: function (inSidebar, propElement, valueTerm, defaultValue, htmlInputType, labelText, setterFunction, widgetSetterFilterFunction, extraHtmlFunction)
         {
             var id = Commons.generateId();
             var retVal = $('<div class="' + BlocksConstants.INPUT_TYPE_WRAPPER_CLASS + '"></div>');
-            retVal.addClass(inputTypeConstant);
+            retVal.addClass(valueTerm.widgetType);
             if (labelText) {
                 var label = ($('<label for="' + id + '">' + labelText + '</label>')).appendTo(retVal);
             }
             var inputGroup = $('<div class="input-group"></div>').appendTo(retVal);
             var input = $('<input id="' + id + '" type="' + htmlInputType + '" class="form-control">').appendTo(inputGroup);
-
-            if (htmlInputAttrs) {
-                $.each(htmlInputAttrs, function (key, value)
-                {
-                    input.attr(key, value);
-                });
-            }
+            //it makes sense to initialize this to the default value
+            var initialValue = defaultValue;
 
             //init and attach the change listener
             var updateCallback = function ()
@@ -571,7 +609,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 updateCallback();
             });
 
-            var firstValue = propElement.attr(contentAttr);
+            var firstValue = propElement.attr(CONTENT_ATTR);
 
             //if the html widget is uninitialized, try to set it to a default value
             if (firstValue == FactMessages.widgetEntryDefaultValue) {
@@ -608,7 +646,153 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
 
             return retVal;
         },
-        _dateTimeSetterFunction: function (_this, propElement, defaultValue, newValue)
+        _createEnumWidget: function (inSidebar, propElement, valueTerm, defaultValue)
+        {
+            var retVal = null;
+
+            var changeListener = function (oldValueTerm, newValueTerm)
+            {
+                if (newValueTerm && newValueTerm.title != '') {
+                    //since the defaultValue is wrapped in <p> and enums are always (?) xsd:strings, we uniformly wrap the values with <p>
+                    propElement.html('<p>' + newValueTerm.title + '</p>');
+                }
+                else {
+                    propElement.html(defaultValue);
+                }
+            };
+
+            //we'll use the name of the property as the label (capitalized)
+            var endpointURL = valueTerm.widgetConfig[BlocksConstants.INPUT_TYPE_CONFIG_RESOURCE_AC_ENDPOINT];
+
+            retVal = this.addUniqueAttributeValueAsync(Sidebar, propElement, Commons.capitalize(valueTerm.label), CONTENT_ATTR, endpointURL, "title", "value", changeListener);
+
+            //call it once to set the default value
+            changeListener();
+
+            return retVal;
+        },
+        _createUriWidget: function (inSidebar, propElement, valueTerm, defaultValue)
+        {
+            var retVal = null;
+
+            // We need to also add the hyperlink href as a property-value, because when we wrap the <a> tag with a <div property=""> tag,
+            // the content of the property tag (eg. the entire <a> tag) gets serialized by the RDFa parser as a I18N-string, using the human readable
+            // text of the hyperlink as a value (instead of using the href value and serializing it as a URI). This is because the property attribute is set on the
+            // wrapping <div> instead of on the <a> tag.
+            //Note: from the RDFa docs: "@content is used to indicate the value of a plain literal", and since it's a URI, we add it as a resource value
+            var currentUri = propElement.attr(RESOURCE_ATTR);
+            var inputActions = this.buildInputActions(Sidebar, true, false, currentUri);
+            retVal = this.createTextInput(Sidebar,
+                function getterFunction()
+                {
+                    return propElement.attr(RESOURCE_ATTR);
+                },
+                function setterFunction(val)
+                {
+                    if (val && val != '') {
+
+                        //for now, we just use the (possibly relative) URI as the link name...
+                        var linkName = val;
+
+                        //detect an absolute URL
+                        //see http://stackoverflow.com/questions/10687099/how-to-test-if-a-url-string-is-absolute-or-relative
+                        var isAbsolute = new RegExp('^(?:[a-z]+:)?//', 'i').test(val);
+
+                        propElement.attr(RESOURCE_ATTR, val);
+                        propElement.html('<a href="' + val + '"' + (isAbsolute ? ' target="_blank"' : '') + '>' + linkName + '</a>');
+                    }
+                    else {
+                        //don't remove the attr, set it to empty (or the help text in the HTML will end up as the value)
+                        propElement.attr(RESOURCE_ATTR, '');
+                        propElement.html(defaultValue);
+                    }
+                },
+                FactMessages.uriEntryLabel, FactMessages.uriEntryPlaceholder, false, inputActions
+            );
+
+            return retVal;
+        },
+        _createResourceWidget: function (inSidebar, propElement, valueTerm, defaultValue)
+        {
+            var retVal = null;
+
+            retVal = this.createAutocompleteWidget(propElement, RESOURCE_ATTR, valueTerm.widgetType, valueTerm.widgetConfig, FactMessages.resourceEntryLabel, null,
+                //Note: this function receives the entire object as it was returned from the server endpoint (class AutocompleteSuggestion)
+                function setterFunction(propElement, newValue)
+                {
+                    if (newValue && newValue.label != '') {
+
+                        //the real value of the property is the remote resource id
+                        //A nice illustration of this use is here: https://www.w3.org/TR/rdfa-syntax/#inheriting-subject-from-resource
+                        //
+                        //Regarding the relation between @resource, @href and @src, the docs say the following:
+                        // "If no @resource is present, then @href or @src are next in priority order for setting the object."
+                        // (see https://www.w3.org/TR/rdfa-syntax/#using-href-or-src-to-set-the-object)
+                        // thus supplying both a @resource with a wrapped @href as below is valid.
+                        propElement.attr(RESOURCE_ATTR, newValue.resourceUri);
+
+                        var labelHtml = newValue.label;
+                        //if the value has an image, it takes precedence of the label and we render an image instead of text
+                        if (newValue.image) {
+                            //note that alt is mandatory, but title provides a nice tooltip when hovering
+                            labelHtml = '<img src="' + newValue.image + '" alt="' + newValue.label + '" title="' + newValue.label + '">';
+                        }
+
+                        //if the value has a link, let's render a hyperlink
+                        if (newValue.link) {
+                            var link = $('<a href="' + newValue.link + '">' + labelHtml + '</a>');
+                            //little trick to get the hostname of an url: put it in a link element (which we need anyway) and query for the raw JS hostname
+                            //also note that we can force an external link server side with the externalLink property
+                            if (newValue.externalLink || link[0].hostname != document.location.hostname) {
+                                link.attr("target", "_blank");
+                            }
+                            propElement.html(link);
+                        }
+                        else {
+                            propElement.html(labelHtml);
+                        }
+                    }
+                    else {
+                        //don't remove the attr, set it to empty (or the help text in the HTML will end up as the value)
+                        propElement.attr(RESOURCE_ATTR, '');
+                        propElement.html(defaultValue);
+                    }
+                });
+
+            return retVal;
+        },
+        _stripAttributes: function (element)
+        {
+            //first copy the attributes to remove if we don't do this it causes problems
+            //iterating over the array we're removing elements from
+            var attributes = $.map(element[0].attributes, function (item)
+            {
+                return item.name;
+            });
+            // now remove the attributes
+            $.each(attributes, function (i, item)
+            {
+                element.removeAttr(item);
+            });
+
+            return element;
+        },
+        _isGmtSelected: function (propElement)
+        {
+            //we default to using the local timezone for entering times
+            var retVal = false;
+
+            //this is a general initialization for time and dateTime, but doesn't harm any other types
+            //this will be the variable we use to save the state of the GMT checkbox
+            //Note that all values are saved in UTC, this is just the flag to control how it's displayed to the user
+            if (propElement.hasAttribute(BlocksConstants.INPUT_TYPE_TIME_GMT_ATTR)) {
+                //see the setter function below: this should be
+                retVal = propElement.attr(BlocksConstants.INPUT_TYPE_TIME_GMT_ATTR) === BOOLEAN_ATTR_TRUE;
+            }
+
+            return retVal;
+        },
+        _dateTimeSetterFunction: function (_this, propElement, defaultValue, newValue, dateTimeEnum, dateTimeFormat, dateTimeValueFormat, timezoneFormat, forceGmt)
         {
             //here we have two possibilities:
             //1) the value comes in from the datetime-local (or date or time) widget, meaning it has no timezone specified
@@ -628,7 +812,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 //what comes in is the value as returned by the widget, so we try to detect as general as possible
                 //See for details: https://github.com/moment/moment/issues/2397
                 var momentFormat = null;
-                switch (_this._dateTimeEnum) {
+                switch (dateTimeEnum) {
                     case DATE_TIME_ENUM_DATE:
                         momentFormat = 'YYYY-MM-DD';
                         break;
@@ -646,7 +830,8 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 //the date/time coming back from the input widget should be ISO 8601 formatted
                 //which is exactly the same standard as the one used by xsd:dateTime; https://www.w3.org/TR/xmlschema11-2/#dateTime
                 var val = null;
-                if (_this._gmtSelected) {
+                var gmt = forceGmt || _this._isGmtSelected(propElement);
+                if (gmt) {
                     val = moment.utc(newValue, momentFormat);
                 }
                 else {
@@ -658,8 +843,8 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
 
                 //Set the user-friendly HTML
                 var timezoneHtml = '';
-                if (_this._timezoneFormat != null) {
-                    var timezone = val.format(_this._timezoneFormat);
+                if (timezoneFormat != null) {
+                    var timezone = val.format(timezoneFormat);
                     var timezoneInnerHtml = null;
                     if (val.utcOffset() == 0) {
                         timezoneInnerHtml = '(UTC)';
@@ -669,15 +854,11 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                     }
                     timezoneHtml = '<span class="' + BlocksConstants.INPUT_TYPE_TIME_TZONE_CLASS + '">' + timezoneInnerHtml + '</span>';
                 }
-                propElement.html(val.format(_this._dateTimeFormat) + timezoneHtml);
+                propElement.html(val.format(dateTimeFormat) + timezoneHtml);
 
                 //Set the @content value
                 //Note that we save everything as UTC (important)
-                propElement.attr(CONTENT_ATTR, val.utc().format(_this._dateTimeValueFormat));
-                //we save the GMT flag to the input element because it's part of the settings of this widget
-                // (and it's annonying to have to set it every time over when editing)
-                //Note that we save it to a temp variable to only set it if we're setting a complete and good date or time
-                propElement.attr(BlocksConstants.INPUT_TYPE_TIME_GMT_ATTR, _this._gmtSelected ? BOOLEAN_ATTR_TRUE : BOOLEAN_ATTR_FALSE);
+                propElement.attr(CONTENT_ATTR, val.utc().format(dateTimeValueFormat));
             }
             else {
                 //don't remove the attr, set it to empty (or the help text in the HTML will end up as the value)
@@ -689,7 +870,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
          * This filter pre-processes the value in the @content attribute before passing it to the datetime html widget
          * We need to chop off the timezone and set the GMT checkbox accordingly because the HTML widget doesn't support timezones
          */
-        _dateTimeWidgetSetterFilterFunction: function (_this, contentValue)
+        _dateTimeWidgetSetterFilterFunction: function (_this, propElement, contentValue, dateTimeValueFormat, dateTimeWidgetFormat, forceGmt)
         {
             var retVal = contentValue;
 
@@ -697,12 +878,13 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 //Note: we save all @content values as UTC, so the GMT flag should always be activated
                 //However, by default, we choose not to activate it because it's easier for the user to
                 //edit dateTimes in local time. Can be changed with the flag below though.
-                var val = moment.utc(contentValue, _this._dateTimeValueFormat);
-                if (val.utcOffset() !== 0 || !_this._gmtSelected) {
+                var val = moment.utc(contentValue, dateTimeValueFormat);
+                var gmt = forceGmt || _this._isGmtSelected(propElement);
+                if (val.utcOffset() !== 0 || !gmt) {
                     //if the saved value is not UTC+0:00, we need to convert it
                     // to the local time zone to make correct adjustments, because
                     // by default (eg. when no GMT flag is on) moment parses and displays in local time.
-                    if (_this._gmtSelected) {
+                    if (gmt) {
                         //convert the val to GMT
                         val = val.utc();
                     }
@@ -716,12 +898,12 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 }
 
                 //the datetime widget expects the format to be without timezone (because it doesn't support it)
-                retVal = val.format(_this._dateTimeWidgetFormat);
+                retVal = val.format(dateTimeWidgetFormat);
             }
 
             return retVal;
         },
-        _dateTimeExtraHtmlFunction: function (_this, updateCallback)
+        _dateTimeExtraHtmlFunction: function (_this, propElement, updateCallback)
         {
             var toggleButton = _this.createToggleButton("GMT/UTC?",
                 function initStateCallback()
@@ -731,11 +913,12 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                         updateCallback();
                     }
 
-                    return _this._gmtSelected;
+                    return _this._isGmtSelected(propElement);
                 },
                 function switchStateCallback(oldState, newState)
                 {
-                    _this._gmtSelected = newState;
+                    propElement.attr(BlocksConstants.INPUT_TYPE_TIME_GMT_ATTR, newState ? BOOLEAN_ATTR_TRUE : BOOLEAN_ATTR_FALSE);
+
                     if (updateCallback) {
                         updateCallback();
                     }

@@ -32,6 +32,7 @@
     &.@{INPUT_TYPE_NUMBER} {
 
       .input-group {
+        width: auto !important;
         .pull-right();
 
         input {
@@ -43,6 +44,7 @@
     //date and time are small enough to fit on the same line
     &.@{INPUT_TYPE_DATE} {
       .input-group {
+        width: auto !important;
         .pull-right();
 
         &,
@@ -53,6 +55,7 @@
     }
     &.@{INPUT_TYPE_TIME} {
       .input-group {
+        width: auto !important;
         .pull-right();
 
         &,
@@ -63,6 +66,7 @@
     }
     &.@{INPUT_TYPE_DATETIME} {
       .input-group {
+        width: auto !important;
         .pull-right();
 
         &,
@@ -74,10 +78,12 @@
 
     &.@{INPUT_TYPE_COLOR} {
       .input-group {
+        width: auto !important;
         .pull-right();
 
         &,
         & input {
+          width: 45px;
           max-width: 45px;
         }
       }
