@@ -23,8 +23,9 @@ base.plugin("blocks.imports.FactEntryText", ["base.core.Class", "blocks.imports.
     this.TAGS = [
         //Note: we don't allow the user to edit the label of the property (but it works)
         //"blocks-fact-entry ."+BlocksConstants.FACT_ENTRY_NAME_CLASS,
-        "blocks-fact-entry [data-property="+FactConstants.FACT_ENTRY_VALUE_PROPERTY+"] ."+BlocksConstants.INPUT_TYPE_EDITOR,
-        "blocks-fact-entry [data-property="+FactConstants.FACT_ENTRY_VALUE_PROPERTY+"] ."+BlocksConstants.INPUT_TYPE_INLINE_EDITOR
+        //Note: by adding the ">", we don't activate the editor for the editor widgets of object sub-properties (those are edited via the sidebar)
+        "blocks-fact-entry [data-property=" + FactConstants.FACT_ENTRY_VALUE_PROPERTY + "] > ." + BlocksConstants.INPUT_TYPE_EDITOR,
+        "blocks-fact-entry [data-property=" + FactConstants.FACT_ENTRY_VALUE_PROPERTY + "] > ." + BlocksConstants.INPUT_TYPE_INLINE_EDITOR
     ];
 
     (this.Class = Class.create(Text.Class, {
