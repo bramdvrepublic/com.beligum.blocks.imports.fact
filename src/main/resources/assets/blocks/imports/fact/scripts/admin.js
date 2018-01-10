@@ -107,7 +107,8 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             //this is the label that belongs to the value
             var labelElement = element.find("[data-property='" + FactConstants.FACT_ENTRY_NAME_PROPERTY + "']");
             //this is the element that holds the true value of the entry
-            var propElement = element.find("." + FactConstants.FACT_ENTRY_PROPERTY_CLASS);
+            //note: we need the first() selector to bypass the sub-properties in possible objects
+            var propElement = element.find("." + FactConstants.FACT_ENTRY_PROPERTY_CLASS).first();
 
             var _this = this;
             var endpointURL = BlocksConstants.RDF_PROPERTIES_ENDPOINT;
@@ -124,11 +125,11 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                     //TODO: one issue remains if you drag an entry out (or in) a sequence, you need to focus it before it updates...
                     var prev = null;
                     //Note: the first-child selector makes sure the sub-properties of possible object widgets don't get selected
-                    $('blocks-fact-entry [data-property=' + FactConstants.FACT_ENTRY_VALUE_CLASS + '] [' + FactConstants.FACT_ENTRY_PROPERTY_CLASS + ']:first-child').each(function ()
+                    $('blocks-fact-entry [data-property=' + FactConstants.FACT_ENTRY_VALUE_CLASS + '] [' + PROPERTY_ATTR + ']:first-child').each(function ()
                     {
                         var el = $(this);
 
-                        if (prev != null && prev.attr(FactConstants.FACT_ENTRY_PROPERTY_CLASS) == el.attr(FactConstants.FACT_ENTRY_PROPERTY_CLASS)) {
+                        if (prev != null && prev.attr(PROPERTY_ATTR) == el.attr(PROPERTY_ATTR)) {
                             el.parents('blocks-fact-entry').addClass(FactConstants.FACT_ENTRY_DOUBLE_CLASS);
                         }
                         else {
@@ -188,7 +189,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
 
             return combobox;
         },
-        _updatePropertyElement: function(_this, inSidebar, skipHtmlChange, labelElement, propElement, valueTerm, sidebarParent)
+        _updatePropertyElement: function (_this, inSidebar, skipHtmlChange, labelElement, propElement, valueTerm, sidebarParent)
         {
             if (!skipHtmlChange) {
 
@@ -407,32 +408,55 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                     var objDatatypeCurie = newValueTerm.dataType[TERM_NAME_FIELD];
 
                     //let's create a little group for the config widgets of this object
-                    var objConfigContainer = $('<div class="'+BlocksConstants.PANEL_GROUP_CLASS+'"></div>');
+                    var objConfigContainer = $('<div class="' + BlocksConstants.PANEL_GROUP_CLASS + '"></div>');
                     objConfigContainer.append($('<div class="title">' + newValueTerm[TERM_LABEL_FIELD] + '</div>'));
 
                     retVal.element = objConfigContainer;
 
-                    //wipe all existing html children
-                    //Note: we can't do that because we want to edit, click away and then edit again
-                    propElement.empty();
+                    //wipe the element if all children are merely text nodes (note that children() doesn't count simple text children)
+                    if (propElement.children().length == 0) {
+                        propElement.empty();
+                    }
 
                     //ask the server to list all the terms of this property's object data type
                     $.getJSON(BlocksConstants.RDF_PROPERTIES_ENDPOINT + "?" + BlocksConstants.RDF_RES_TYPE_CURIE_PARAM + "=" + objDatatypeCurie)
                         .done(function (data)
                         {
-                            //var comboEntries = [];
+                            var objRefs = {};
+
                             $.each(data, function (idx, entry)
                             {
-                                var objContainerElement = $('<div/>')
-                                    .appendTo(propElement);
+                                var curie = entry[TERM_NAME_FIELD];
+                                var ref = objRefs[curie];
+                                if (!ref) {
+                                    ref = [entry];
+                                    objRefs[curie] = ref;
+                                }
+                                else {
+                                    ref.push(entry);
+                                }
 
-                                var objLabelElement = $('<label/>')
-                                    .appendTo(objContainerElement);
+                                var objContainer = propElement.children('[' + FactConstants.FACT_ENTRY_OBJPROP_PLACEHOLDER_ATTR + '="' + curie + '"]').eq(ref.length - 1);
+                                var objLabel;
+                                var objProp;
 
-                                var objPropElement = $('<div/>')
-                                    .appendTo(objContainerElement);
+                                if (objContainer.length) {
+                                    objLabel = objContainer.find('label');
+                                    objProp = objContainer.find('div');
+                                }
+                                else {
+                                    objContainer = $('<div/>')
+                                        .attr(FactConstants.FACT_ENTRY_OBJPROP_PLACEHOLDER_ATTR, curie)
+                                        .appendTo(propElement);
 
-                                _this._updatePropertyElement(_this, true, false, objLabelElement, objPropElement, entry, objConfigContainer);
+                                    objLabel = $('<label/>')
+                                        .appendTo(objContainer);
+
+                                    objProp = $('<div/>')
+                                        .appendTo(objContainer);
+                                }
+
+                                _this._updatePropertyElement(_this, true, false, objLabel, objProp, entry, objConfigContainer);
 
                             });
                         })
@@ -492,7 +516,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 );
             }
             else {
-                if (!skipHtmlChange && defaultValue != null) {
+                if (!skipHtmlChange) {
                     //Note: the editor works best with wrapped <p>'s but these are added automatically on edit so let's start clean
                     propElement.html(defaultValue);
                 }
@@ -516,26 +540,26 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                     {
                         propElement.html(val);
 
-                        if (val) {
-                            if (!$.contains(propParent[0], propElement[0])) {
-                                propParent.append(propElement);
-                            }
-                        }
-                        else {
-                            if ($.contains(propParent[0], propElement[0])) {
-                                propElement.detach();
-                            }
-                        }
+                        // if (val) {
+                        //     if (!$.contains(propParent[0], propElement[0])) {
+                        //         propParent.append(propElement);
+                        //     }
+                        // }
+                        // else {
+                        //     if ($.contains(propParent[0], propElement[0])) {
+                        //         propElement.detach();
+                        //     }
+                        // }
                     },
                     Commons.capitalize(valueTerm.label),
-                    //Note we don't use the defaultValue as a placeholder because it looks like double info
+                    //Note we don't use the defaultValue as a placeholder because it looks like double info in the sidebar
                     '', false, null
                 );
 
-                propElement.detach();
+                // propElement.detach();
             }
             else {
-                if (!skipHtmlChange && defaultValue != null) {
+                if (!skipHtmlChange) {
                     //Note: the editor works best with wrapped <p>'s
                     propElement.html(defaultValue);
                 }
@@ -567,21 +591,20 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             var retVal = this.createToggleButton(inSidebar ? Commons.capitalize(valueTerm.label) : FactMessages.booleanEntryLabel,
                 function initStateCallback()
                 {
-                    var retVal = propElement.attr(CONTENT_ATTR) == CONTENT_VALUE_TRUE;
-
-                    toggleState(retVal);
-
-                    return retVal;
+                    return propElement.attr(CONTENT_ATTR) == CONTENT_VALUE_TRUE;
                 },
                 function switchStateCallback(oldState, newState)
                 {
                     toggleState(newState);
                 },
                 BlocksMessages.toggleLabelYes,
-                BlocksMessages.toggleLabelNo
+                BlocksMessages.toggleLabelNo,
+                //when this is created in the sidebar, we start in 'disabled' mode
+                inSidebar
             );
 
-            if (!skipHtmlChange && defaultValue != null) {
+            //note: don't fire the change listener if we're in the sidebar, because of the startDisabled flag
+            if (!skipHtmlChange && defaultValue != null && !inSidebar) {
                 toggleState(defaultValue);
             }
 
@@ -600,31 +623,30 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             }
             var inputGroup = $('<div class="input-group"></div>').appendTo(retVal);
             var input = $('<input id="' + id + '" type="' + htmlInputType + '" class="form-control">').appendTo(inputGroup);
-            //it makes sense to initialize this to the default value
-            var initialValue = defaultValue;
 
             //init and attach the change listener
             var updateCallback = function ()
             {
-                setterFunction(propElement, initialValue, input.val());
+                setterFunction(propElement, inSidebar ? null : defaultValue, input.val());
             };
             input.on("change keyup focus", function (event)
             {
                 updateCallback();
             });
 
+
             var firstValue = propElement.attr(CONTENT_ATTR);
 
             //if the html widget is uninitialized, try to set it to a default value
             if (firstValue == FactMessages.widgetEntryDefaultValue) {
-                //initial value may be 0 or '', so check of type
-                if (typeof initialValue !== typeof undefined) {
-                    firstValue = initialValue;
+                //initial value may be (a valid) 0 or '', so check the type
+                if (typeof defaultValue !== typeof undefined) {
+                    firstValue = defaultValue;
                 }
             }
 
             //this gives us a chance to skip this if it would be needed
-            if (typeof firstValue !== typeof undefined) {
+            if (typeof firstValue !== typeof undefined && !inSidebar) {
                 //init the input and filter it if needed;
                 // this filter sits between the value in the @content attribute and the setter function for the input widget
                 // so we can do some preprocessing before passing it to the widget
@@ -633,7 +655,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 }
                 input.val(firstValue);
                 //fire the change (because the one above doesn't seem to do so)
-                setterFunction(propElement, initialValue, firstValue);
+                setterFunction(propElement, defaultValue, firstValue);
             }
 
             //note: this should come after the processing of widgetSetterFilterFunction() because
@@ -670,7 +692,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             retVal = this.addUniqueAttributeValueAsync(Sidebar, propElement, Commons.capitalize(valueTerm.label), CONTENT_ATTR, endpointURL, "title", "value", changeListener);
 
             //call it once to set the default value
-            if (!skipHtmlChange && defaultValue != null) {
+            if (!skipHtmlChange && !inSidebar && defaultValue != null) {
                 changeListener();
             }
 
@@ -760,7 +782,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                     else {
                         //don't remove the attr, set it to empty (or the help text in the HTML will end up as the value)
                         propElement.attr(RESOURCE_ATTR, '');
-                        propElement.html(defaultValue);
+                        propElement.html(inSidebar ? null : defaultValue);
                     }
                 });
 
@@ -918,11 +940,6 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             var toggleButton = _this.createToggleButton(label,
                 function initStateCallback()
                 {
-                    //call it once during initializing
-                    if (updateCallback) {
-                        updateCallback();
-                    }
-
                     return _this._isGmtSelected(propElement);
                 },
                 function switchStateCallback(oldState, newState)
@@ -936,6 +953,11 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 BlocksMessages.toggleLabelYes,
                 BlocksMessages.toggleLabelNo
             );
+
+            //call it once during initializing, except when we're in the sidebar
+            if (updateCallback && !inSidebar) {
+                updateCallback();
+            }
 
             return toggleButton;
         }
