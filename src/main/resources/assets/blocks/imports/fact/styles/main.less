@@ -98,5 +98,15 @@ blocks-fact-entry {
         max-width: 100%;
       }
     }
+
+    .@{INPUT_TYPE_OBJECT} {
+      & > .@{FACT_ENTRY_MAINPROP_CLASS} {
+        //hide the label of the main property (the label of the object acts as the label)
+        label {
+          display: none;
+        }
+      }
+    }
+
   }
 }

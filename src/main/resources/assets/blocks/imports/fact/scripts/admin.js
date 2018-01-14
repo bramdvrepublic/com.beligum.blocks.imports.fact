@@ -65,6 +65,8 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
 
     var OLD_VAL_DATA_KEY = 'old-value';
     var OBJ_INDEX_DATA_KEY = 'index';
+    //Note: this key is also used in the valueTerm
+    var OBJ_MAINPROP_DATA_KEY = 'mainprop';
 
     (this.Class = Class.create(Block.Class, {
 
@@ -207,11 +209,15 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 //-- Initialize the html
                 //we don't really allow this for now (it resets the html back to the default state if we pass undefined or null as newValue)
                 if (!valueTerm) {
-                    labelElement.html(FactMessages.widgetEntryDefaultLabel);
+                    if (labelElement) {
+                        labelElement.html(FactMessages.widgetEntryDefaultLabel);
+                    }
                 }
                 else {
-                    //set the label html (note: if you change this, make sure the .text() function above in the skipHtmlChange check still works...)
-                    labelElement.html(valueTerm.label);
+                    if (labelElement) {
+                        //set the label html (note: if you change this, make sure the .text() function above in the skipHtmlChange check still works...)
+                        labelElement.html(valueTerm.label);
+                    }
 
                     //Initialize the property attributes
                     //Note that we also could use the 'rel' attribute instead of 'property' when working with resources (not for literals)
@@ -272,9 +278,9 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 }
             }
 
-            _this._createWidget(_this, inSidebar, skipHtmlChange, propElement, propParentElement, valueTerm, sidebarParent);
+            _this._createWidget(_this, inSidebar, skipHtmlChange, labelElement, propElement, propParentElement, valueTerm, sidebarParent);
         },
-        _createWidget: function (_this, inSidebar, skipHtmlChange, propElement, propParentElement, newValueTerm, sidebarParent)
+        _createWidget: function (_this, inSidebar, skipHtmlChange, labelElement, propElement, propParentElement, newValueTerm, sidebarParent)
         {
             var retVal = {
                 element: null,
@@ -449,51 +455,71 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
 
                     //ask the server to list all the terms of this property's object data type
                     $.getJSON(BlocksConstants.RDF_PROPERTIES_ENDPOINT + "?" + BlocksConstants.RDF_RES_TYPE_CURIE_PARAM + "=" + objDatatypeCurie)
-                        .done(function (data)
+                        .done(function (allPropertiesData)
                         {
-                            var objRefs = {};
+                            //2nd call to server to fetch the main property
+                            $.getJSON(BlocksConstants.RDF_MAIN_PROPERTY_ENDPOINT + "?" + BlocksConstants.RDF_RES_TYPE_CURIE_PARAM + "=" + objDatatypeCurie)
+                                .done(function (mainPropertyData)
+                                {
+                                    var objRefs = {};
 
-                            $.each(data, function (idx, entry)
-                            {
-                                var curie = entry[TERM_NAME_FIELD];
-                                var ref = objRefs[curie];
-                                if (!ref) {
-                                    ref = [entry];
-                                    objRefs[curie] = ref;
-                                }
-                                else {
-                                    ref.push(entry);
-                                }
+                                    $.each(allPropertiesData, function (idx, entry)
+                                    {
+                                        var curie = entry[TERM_NAME_FIELD];
+                                        var ref = objRefs[curie];
+                                        if (!ref) {
+                                            ref = [entry];
+                                            objRefs[curie] = ref;
+                                        }
+                                        else {
+                                            ref.push(entry);
+                                        }
 
-                                var objContainer;
-                                var objLabel;
-                                var objProp;
-                                var skipHtmlChange;
+                                        var isMainProperty = mainPropertyData ? mainPropertyData[TERM_NAME_FIELD] === curie : false;
+                                        var objContainer;
+                                        var objLabel;
+                                        var objProp;
+                                        var inSidebar = true;
+                                        var skipHtmlChange;
 
-                                var objSearch = propElement.find('[' + PROPERTY_ATTR + '="' + curie + '"]').eq(ref.length - 1);
-                                if (objSearch.length) {
-                                    objContainer = objSearch.parent();
-                                    objLabel = objContainer.find('label');
-                                    objProp = objSearch;
-                                    skipHtmlChange = true;
-                                }
-                                else {
-                                    //Note: we don't add the element by default, but only if it received some good value
-                                    objContainer = $('<div />')
-                                        .data(OBJ_INDEX_DATA_KEY, idx);
+                                        var existingObjProp = propElement.find('[' + PROPERTY_ATTR + '="' + curie + '"]').eq(ref.length - 1);
+                                        if (existingObjProp.length) {
+                                            objContainer = existingObjProp.parent();
+                                            objLabel = objContainer.find('label');
+                                            objProp = existingObjProp;
+                                            skipHtmlChange = true;
+                                        }
+                                        else {
+                                            //Note: we don't add the element by default, but only if it received some good value
+                                            objContainer = $('<div />')
+                                            //idx is zero-based, but zero is reserved for the main property
+                                                .data(OBJ_INDEX_DATA_KEY, isMainProperty ? 0 : idx + 1)
+                                                .data(OBJ_MAINPROP_DATA_KEY, isMainProperty);
 
-                                    objLabel = $('<label/>')
-                                        .appendTo(objContainer);
+                                            objLabel = $('<label/>')
+                                                .appendTo(objContainer);
 
-                                    objProp = $('<div/>')
-                                        .appendTo(objContainer);
+                                            objProp = $('<div/>')
+                                                .appendTo(objContainer);
 
-                                    skipHtmlChange = false;
-                                }
+                                            skipHtmlChange = false;
+                                        }
 
-                                _this._updatePropertyElement(_this, true, skipHtmlChange, objLabel, objProp, propElement, entry, objConfigContainer);
+                                        //let's reuse the key to add some extra metadata to the entry
+                                        entry[OBJ_MAINPROP_DATA_KEY] = isMainProperty;
+                                        if (isMainProperty) {
+                                            //styling is done in css
+                                            objContainer.addClass(FactConstants.FACT_ENTRY_MAINPROP_CLASS);
+                                        }
 
-                            });
+                                        _this._updatePropertyElement(_this, inSidebar, skipHtmlChange, objLabel, objProp, propElement, entry, objConfigContainer);
+
+                                    });
+                                })
+                                .fail(function (xhr, textStatus, exception)
+                                {
+                                    Notification.error(BlocksMessages.generalServerDataError + (exception ? "; " + exception : ""), xhr);
+                                });
                         })
                         .fail(function (xhr, textStatus, exception)
                         {
@@ -547,7 +573,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                             propElement.html('');
                         }
                     },
-                    Commons.capitalize(valueTerm.label),
+                    _this._buildSidebarObjectLabel(valueTerm),
                     //Note we don't use the defaultValue as a placeholder because it looks like double info
                     ''
                 );
@@ -577,7 +603,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
 
                         propElement.html(val);
                     },
-                    Commons.capitalize(valueTerm.label),
+                    _this._buildSidebarObjectLabel(valueTerm),
                     //Note we don't use the defaultValue as a placeholder because it looks like double info in the sidebar
                     '', false, null
                 );
@@ -619,7 +645,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
 
             //when this is created fresh in the sidebar, we start in 'disabled' mode
             var startDisabled = inSidebar && !skipHtmlChange;
-            var retVal = this.createToggleButton(inSidebar ? Commons.capitalize(valueTerm.label) : FactMessages.booleanEntryLabel,
+            var retVal = this.createToggleButton(inSidebar ? _this._buildSidebarObjectLabel(valueTerm) : FactMessages.booleanEntryLabel,
                 function initStateCallback()
                 {
                     return propElement.attr(CONTENT_ATTR) == CONTENT_VALUE_TRUE;
@@ -647,7 +673,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             retVal.addClass(valueTerm.widgetType);
             if (labelText || inSidebar) {
                 if (inSidebar) {
-                    labelText = Commons.capitalize(valueTerm.label);
+                    labelText = _this._buildSidebarObjectLabel(valueTerm);
                 }
                 var label = ($('<label for="' + id + '">' + labelText + '</label>')).appendTo(retVal);
             }
@@ -723,7 +749,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 propElement.html(newValue);
             };
 
-            retVal = this.addUniqueAttributeValueAsync(Sidebar, propElement, Commons.capitalize(valueTerm.label), CONTENT_ATTR,
+            retVal = this.addUniqueAttributeValueAsync(Sidebar, propElement, _this._buildSidebarObjectLabel(valueTerm), CONTENT_ATTR,
                 valueTerm.widgetConfig[BlocksConstants.INPUT_TYPE_CONFIG_RESOURCE_AC_ENDPOINT], "title", "value", changeListener, true);
 
             //call it once in a hacky way to set the default value
@@ -775,7 +801,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                         propElement.html(defaultValue);
                     }
                 },
-                inSidebar ? Commons.capitalize(valueTerm.label) : FactMessages.uriEntryLabel, FactMessages.uriEntryPlaceholder, false, inputActions
+                inSidebar ? _this._buildSidebarObjectLabel(valueTerm) : FactMessages.uriEntryLabel, FactMessages.uriEntryPlaceholder, false, inputActions
             );
 
             return retVal;
@@ -784,7 +810,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
         {
             var retVal = null;
 
-            retVal = this.createAutocompleteWidget(propElement, RESOURCE_ATTR, valueTerm.widgetType, valueTerm.widgetConfig, inSidebar ? Commons.capitalize(valueTerm.label) : FactMessages.resourceEntryLabel, null,
+            retVal = this.createAutocompleteWidget(propElement, RESOURCE_ATTR, valueTerm.widgetType, valueTerm.widgetConfig, inSidebar ? _this._buildSidebarObjectLabel(valueTerm) : FactMessages.resourceEntryLabel, null,
                 //Note: this function receives the entire object as it was returned from the server endpoint (class AutocompleteSuggestion)
                 function setterFunction(propElement, newValue)
                 {
@@ -1059,10 +1085,10 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
 
                 allPropChildren.sort(function (a, b)
                 {
-                    var an = $(a).data(OBJ_INDEX_DATA_KEY),
-                        bn = $(b).data(OBJ_INDEX_DATA_KEY);
+                    var aEl = $(a);
+                    var bEl = $(b);
 
-                    return +an - +bn;
+                    return +aEl.data(OBJ_INDEX_DATA_KEY) - +bEl.data(OBJ_INDEX_DATA_KEY);
                 });
 
                 propParentElement.append(allPropChildren);
@@ -1096,6 +1122,17 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
         {
             propElement.empty();
             propElement.html(FactMessages.objectEntryDefaultValue);
+        },
+        _buildSidebarObjectLabel: function (valueTerm)
+        {
+            var retVal = Commons.capitalize(valueTerm.label);
+
+            //add an asterisk to the main property
+            if (valueTerm[OBJ_MAINPROP_DATA_KEY]) {
+                retVal += '*';
+            }
+
+            return retVal;
         }
 
     })).register(this.TAGS);
