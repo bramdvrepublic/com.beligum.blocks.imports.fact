@@ -19,6 +19,7 @@ package com.beligum.blocks.imports.fact;
 import com.beligum.base.resources.ifaces.Source;
 import com.beligum.base.server.R;
 import com.beligum.base.templating.ifaces.TemplateContext;
+import com.beligum.blocks.config.InputType;
 import com.beligum.blocks.config.RdfFactory;
 import com.beligum.blocks.endpoints.ifaces.AutocompleteSuggestion;
 import com.beligum.blocks.endpoints.ifaces.RdfQueryEndpoint;
@@ -41,6 +42,7 @@ import java.time.temporal.TemporalAccessor;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Locale;
+import java.util.Map;
 
 import static gen.com.beligum.blocks.core.constants.blocks.core.INPUT_TYPE_TIME_GMT_ATTR;
 import static java.time.ZoneOffset.UTC;
@@ -65,6 +67,8 @@ public class Controller extends DefaultTemplateController
     public void prepareForSave(Source source, Element element, OutputDocument htmlOutput)
     {
         this.normalizeLabel(source, element, htmlOutput);
+
+        this.instantiateInlineObjects(source, element, htmlOutput);
     }
     /**
      * Note that we could actually only normalize during save, because a new page should be rendered out correctly
@@ -74,6 +78,8 @@ public class Controller extends DefaultTemplateController
     public void prepareForCopy(Source source, Element element, OutputDocument htmlOutput, URI targetUri, Locale targetLanguage) throws IOException
     {
         this.normalizeLabel(source, element, htmlOutput);
+
+        //TODO instantiateInlineObjects
 
         if (!source.getLanguage().equals(targetLanguage)) {
             this.translateValue(source, element, htmlOutput, targetLanguage);
@@ -192,6 +198,27 @@ public class Controller extends DefaultTemplateController
                             default:
                                 throw new IOException("Encountered unimplemented widget type parser, please fix; " + property.getWidgetType());
                         }
+                    }
+                }
+            }
+        }
+    }
+    private void instantiateInlineObjects(Source source, Element element, OutputDocument htmlOutput)
+    {
+        Element propertyEl = element.getFirstElementByClass(fact.FACT_ENTRY_PROPERTY_CLASS);
+        if (propertyEl != null) {
+            String resourceType = HtmlTemplate.getPropertyAttribute(propertyEl.getStartTag());
+            if (!StringUtils.isEmpty(resourceType)) {
+                RdfClass rdfClass = RdfFactory.getClassForResourceType(URI.create(resourceType));
+                if (rdfClass != null && rdfClass instanceof RdfProperty) {
+                    RdfProperty property = (RdfProperty) rdfClass;
+
+                    //an object without a resource URI is newly instantiated and needs a newly generated resource URI
+                    Attributes attributes = propertyEl.getAttributes();
+                    Attribute resourceAttr = attributes.get("resource");
+                    if (property.getWidgetType().equals(InputType.Object) && (resourceAttr == null || StringUtils.isEmpty(resourceAttr.getValue()))) {
+                        Map<String, String> newAttributes = htmlOutput.replace(attributes, false);
+                        newAttributes.put("resource", RdfTools.createAbsoluteResourceId(rdfClass).toString());
                     }
                 }
             }
