@@ -218,7 +218,8 @@ public class Controller extends DefaultTemplateController
                     Attribute resourceAttr = attributes.get("resource");
                     if (property.getWidgetType().equals(InputType.Object) && (resourceAttr == null || StringUtils.isEmpty(resourceAttr.getValue()))) {
                         Map<String, String> newAttributes = htmlOutput.replace(attributes, false);
-                        newAttributes.put("resource", RdfTools.createAbsoluteResourceId(rdfClass).toString());
+                        //note that since the @about attribute of pages is relative, we also keep this relative
+                        newAttributes.put("resource", RdfTools.createRelativeResourceId(rdfClass).toString());
                     }
                 }
             }

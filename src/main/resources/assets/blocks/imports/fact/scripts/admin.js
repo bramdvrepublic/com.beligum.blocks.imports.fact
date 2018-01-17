@@ -74,12 +74,6 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
         BlocksFactEntryConfig: this,
         //this contains a mapping between ontology urls and the data objects returned by the server
         _termMappings: null,
-        //_gmtSelected: false,
-        //_dateTimeEnum: null,
-        //_dateTimeFormat: null,
-        //_timezoneFormat: null,
-        //_dateTimeValueFormat: null,
-        //_dateTimeWidgetFormat: null,
 
         //-----CONSTRUCTORS-----
         constructor: function ()
@@ -487,14 +481,12 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                                             objContainer = existingObjProp.parent();
                                             objLabel = objContainer.find('label');
                                             objProp = existingObjProp;
+
                                             skipHtmlChange = true;
                                         }
                                         else {
                                             //Note: we don't add the element by default, but only if it received some good value
-                                            objContainer = $('<div />')
-                                            //idx is zero-based, but zero is reserved for the main property
-                                                .data(OBJ_INDEX_DATA_KEY, isMainProperty ? 0 : idx + 1)
-                                                .data(OBJ_MAINPROP_DATA_KEY, isMainProperty);
+                                            objContainer = $('<div />');
 
                                             objLabel = $('<label/>')
                                                 .appendTo(objContainer);
@@ -504,6 +496,12 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
 
                                             skipHtmlChange = false;
                                         }
+
+                                        //for sorting (see below)
+                                        objContainer
+                                        //idx is zero-based, but zero is reserved for the main property
+                                            .data(OBJ_INDEX_DATA_KEY, isMainProperty ? 0 : idx + 1)
+                                            .data(OBJ_MAINPROP_DATA_KEY, isMainProperty);
 
                                         //let's reuse the key to add some extra metadata to the entry
                                         entry[OBJ_MAINPROP_DATA_KEY] = isMainProperty;
@@ -558,7 +556,13 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 retVal = this.createTextareaInput(Sidebar,
                     function getterFunction()
                     {
-                        return propElement.html();
+                        //Note: the HTML normalizer tends to append a newline before and after the value inside a <div>, resulting in a normalized space
+                        //when rendering out this value, so make sure we trim it's value, just like in the normal editor
+                        var retVal = $.trim(propElement.html());
+
+                        _this._initializeOldVal(propElement, retVal);
+
+                        return retVal;
                     },
                     function setterFunction(val)
                     {
@@ -595,7 +599,13 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 retVal = this.createTextInput(Sidebar,
                     function getterFunction()
                     {
-                        return propElement.html();
+                        //Note: the HTML normalizer tends to append a newline before and after the value inside a <div>, resulting in a normalized space
+                        //when rendering out this value, so make sure we trim it's value, just like in the normal editor
+                        var retVal = $.trim(propElement.html());
+
+                        _this._initializeOldVal(propElement, retVal);
+
+                        return retVal;
                     },
                     function setterFunction(val)
                     {
@@ -643,12 +653,19 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 propElement.html('<div class="' + BlocksConstants.INPUT_TYPE_BOOLEAN_VALUE_CLASS + '" />');
             };
 
-            //when this is created fresh in the sidebar, we start in 'disabled' mode
-            var startDisabled = inSidebar && !skipHtmlChange;
+            //in the sidebar, we enable 'disabled' mode
+            var enableDisabled = inSidebar;
             var retVal = this.createToggleButton(inSidebar ? _this._buildSidebarObjectLabel(valueTerm) : FactMessages.booleanEntryLabel,
                 function initStateCallback()
                 {
-                    return propElement.attr(CONTENT_ATTR) == CONTENT_VALUE_TRUE;
+                    //supports returning undefined to activate disabled state
+                    var retVal = propElement.hasAttribute(CONTENT_ATTR) ? propElement.attr(CONTENT_ATTR) == CONTENT_VALUE_TRUE : undefined;
+
+                    if (inSidebar) {
+                        _this._initializeOldVal(propElement, retVal);
+                    }
+
+                    return retVal;
                 },
                 function switchStateCallback(oldState, newState)
                 {
@@ -656,10 +673,10 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 },
                 BlocksMessages.toggleLabelYes,
                 BlocksMessages.toggleLabelNo,
-                startDisabled
+                enableDisabled
             );
 
-            //note: don't fire the change listener if we're in the sidebar, because of the startDisabled flag
+            //note: don't fire the change listener if we're in the sidebar, because of the startDisabled flag and the way we're hiding the propElements of empty properties
             if (!skipHtmlChange && defaultValue != null && !inSidebar) {
                 toggleState(defaultValue);
             }
@@ -705,6 +722,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             }
 
             //this gives us a chance to skip this if it would be needed
+            //Note: we don't call it if we're in the sidebar because we're hiding the propElements of empty properties
             if (typeof firstValue !== typeof undefined && !inSidebar) {
                 //init the input and filter it if needed;
                 // this filter sits between the value in the @content attribute and the setter function for the input widget
@@ -732,6 +750,11 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 }
             }
 
+            //if we're in the sidebar, we must initialize the old value for the create/destroy functionality to work
+            if (inSidebar) {
+                _this._initializeOldVal(propElement, input.val());
+            }
+
             return retVal;
         },
         _createEnumWidget: function (_this, inSidebar, propElement, propParentElement, valueTerm, skipHtmlChange, defaultValue)
@@ -753,10 +776,16 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 valueTerm.widgetConfig[BlocksConstants.INPUT_TYPE_CONFIG_RESOURCE_AC_ENDPOINT], "title", "value", changeListener, true);
 
             //call it once in a hacky way to set the default value
+            //Note: we don't call it if we're in the sidebar because we're hiding the propElements of empty properties
             if (!skipHtmlChange && !inSidebar && defaultValue != null) {
                 changeListener(undefined, {
                     title: defaultValue
                 });
+            }
+
+            //if we're in the sidebar, we must initialize the old value for the create/destroy functionality to work
+            if (inSidebar) {
+                _this._initializeOldVal(propElement, propElement.attr(CONTENT_ATTR));
             }
 
             return retVal;
@@ -775,7 +804,13 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             retVal = this.createTextInput(Sidebar,
                 function getterFunction()
                 {
-                    return propElement.attr(RESOURCE_ATTR);
+                    var retVal = propElement.attr(RESOURCE_ATTR);
+
+                    if (inSidebar) {
+                        _this._initializeOldVal(propElement, retVal);
+                    }
+
+                    return retVal;
                 },
                 function setterFunction(val)
                 {
@@ -1078,7 +1113,8 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 propElementRoot = propElementRoot.parent();
             }
 
-            if (propElementRoot.length) {
+            //second check: if the loop went up all the way to the document for some reason, there's probably something wrong...
+            if (propElementRoot.length && !propElementRoot.is(document)) {
 
                 //detach all children, reorder them based on the data-index attribute and reattach them (with the new one included)
                 var allPropChildren = propParentElement.children().detach().add(propElementRoot);
@@ -1092,6 +1128,14 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 });
 
                 propParentElement.append(allPropChildren);
+            }
+        },
+        _initializeOldVal: function(propElement, val)
+        {
+            //initialize the old value store, but don't overwrite
+            //Note: this is required for come-back-and-edit to work, see _checkBasicCreateDestroy()
+            if (typeof propElement.data(OLD_VAL_DATA_KEY) === typeof undefined) {
+                propElement.data(OLD_VAL_DATA_KEY, val);
             }
         },
         /**
