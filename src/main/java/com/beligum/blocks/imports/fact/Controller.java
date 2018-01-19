@@ -39,10 +39,7 @@ import java.net.URI;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 
 import static gen.com.beligum.blocks.core.constants.blocks.core.INPUT_TYPE_TIME_GMT_ATTR;
 import static java.time.ZoneOffset.UTC;
@@ -68,7 +65,7 @@ public class Controller extends DefaultTemplateController
     {
         this.normalizeLabel(source, element, htmlOutput);
 
-        this.instantiateInlineObjects(source, element, htmlOutput);
+        this.parseInlineObjects(source, element, htmlOutput, false);
     }
     /**
      * Note that we could actually only normalize during save, because a new page should be rendered out correctly
@@ -79,11 +76,14 @@ public class Controller extends DefaultTemplateController
     {
         this.normalizeLabel(source, element, htmlOutput);
 
-        //TODO instantiateInlineObjects
-
+        //Note that this must come before the stripping of the resource attributes see parseInlineObjects()
+        //because of the "resource != null" check in the body of translateValue()
         if (!source.getLanguage().equals(targetLanguage)) {
             this.translateValue(source, element, htmlOutput, targetLanguage);
         }
+
+        //remove sub-resource URIs (they will get re-created on first save)
+        this.parseInlineObjects(source, element, htmlOutput, true);
     }
 
     //-----PROTECTED METHODS-----
@@ -195,6 +195,19 @@ public class Controller extends DefaultTemplateController
                                 }
 
                                 break;
+
+                            //A little note: since all information about the resource is embedded in the widget itself,
+                            //we need to call this method recursively on all sub-properties to translate an object.
+                            case Object:
+                                //the immediate children of the property element are the containers for the label+property
+                                //of the sub-properties
+                                List<Element> subPropertyContainers = propertyEl.getChildElements();
+                                for (Element subPropertyContainer : subPropertyContainers) {
+                                    this.translateValue(source, subPropertyContainer, htmlOutput, toLanguage);
+                                }
+
+                                break;
+
                             default:
                                 throw new IOException("Encountered unimplemented widget type parser, please fix; " + property.getWidgetType());
                         }
@@ -203,7 +216,11 @@ public class Controller extends DefaultTemplateController
             }
         }
     }
-    private void instantiateInlineObjects(Source source, Element element, OutputDocument htmlOutput)
+    /**
+     * This will add a new or remove and existing @resource attribute of all sub-resources.
+     * If removeResources is true, the attribute is cleared, otherwise, it's instantiated (when it doesn't exist)
+     */
+    private void parseInlineObjects(Source source, Element element, OutputDocument htmlOutput, boolean removeResources)
     {
         Element propertyEl = element.getFirstElementByClass(fact.FACT_ENTRY_PROPERTY_CLASS);
         if (propertyEl != null) {
@@ -216,10 +233,22 @@ public class Controller extends DefaultTemplateController
                     //an object without a resource URI is newly instantiated and needs a newly generated resource URI
                     Attributes attributes = propertyEl.getAttributes();
                     Attribute resourceAttr = attributes.get("resource");
-                    if (property.getWidgetType().equals(InputType.Object) && (resourceAttr == null || StringUtils.isEmpty(resourceAttr.getValue()))) {
-                        Map<String, String> newAttributes = htmlOutput.replace(attributes, false);
-                        //note that since the @about attribute of pages is relative, we also keep this relative
-                        newAttributes.put("resource", RdfTools.createRelativeResourceId(rdfClass).toString());
+                    if (property.getWidgetType().equals(InputType.Object)) {
+                        //remove existing attributes
+                        if (removeResources) {
+                            if (resourceAttr != null) {
+                                Map<String, String> newAttributes = htmlOutput.replace(attributes, false);
+                                newAttributes.remove("resource");
+                            }
+                        }
+                        //create and init the attribute if it doesn't exist
+                        else {
+                            if (resourceAttr == null || StringUtils.isEmpty(resourceAttr.getValue())) {
+                                Map<String, String> newAttributes = htmlOutput.replace(attributes, false);
+                                //note that since the @about attribute of pages is relative, we also keep this relative
+                                newAttributes.put("resource", RdfTools.createRelativeResourceId(rdfClass).toString());
+                            }
+                        }
                     }
                 }
             }
