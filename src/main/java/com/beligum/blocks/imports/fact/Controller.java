@@ -41,6 +41,8 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
 import java.util.*;
 
+import static com.beligum.blocks.templating.blocks.HtmlParser.RDF_CONTENT_ATTR;
+import static com.beligum.blocks.templating.blocks.HtmlParser.RDF_RESOURCE_ATTR;
 import static gen.com.beligum.blocks.core.constants.blocks.core.INPUT_TYPE_TIME_GMT_ATTR;
 import static java.time.ZoneOffset.UTC;
 
@@ -65,7 +67,7 @@ public class Controller extends DefaultTemplateController
     {
         this.normalizeLabel(source, element, htmlOutput);
 
-        this.parseInlineObjects(source, element, htmlOutput, false);
+        this.parseSubresources(source, element, htmlOutput, false);
     }
     /**
      * Note that we could actually only normalize during save, because a new page should be rendered out correctly
@@ -76,14 +78,14 @@ public class Controller extends DefaultTemplateController
     {
         this.normalizeLabel(source, element, htmlOutput);
 
-        //Note that this must come before the stripping of the resource attributes see parseInlineObjects()
+        //Note that this must come before the stripping of the resource attributes see parseSubresources()
         //because of the "resource != null" check in the body of translateValue()
         if (!source.getLanguage().equals(targetLanguage)) {
             this.translateValue(source, element, htmlOutput, targetLanguage);
         }
 
         //remove sub-resource URIs (they will get re-created on first save)
-        this.parseInlineObjects(source, element, htmlOutput, true);
+        this.parseSubresources(source, element, htmlOutput, true);
     }
 
     //-----PROTECTED METHODS-----
@@ -143,8 +145,8 @@ public class Controller extends DefaultTemplateController
                 if (rdfClass != null && rdfClass instanceof RdfProperty) {
                     RdfProperty property = (RdfProperty) rdfClass;
 
-                    String content = propertyEl.getAttributeValue("content");
-                    String resource = propertyEl.getAttributeValue("resource");
+                    String content = propertyEl.getAttributeValue(RDF_CONTENT_ATTR);
+                    String resource = propertyEl.getAttributeValue(RDF_RESOURCE_ATTR);
                     if (content != null || resource != null) {
 
                         switch (property.getWidgetType()) {
@@ -220,7 +222,7 @@ public class Controller extends DefaultTemplateController
      * This will add a new or remove and existing @resource attribute of all sub-resources.
      * If removeResources is true, the attribute is cleared, otherwise, it's instantiated (when it doesn't exist)
      */
-    private void parseInlineObjects(Source source, Element element, OutputDocument htmlOutput, boolean removeResources)
+    private void parseSubresources(Source source, Element element, OutputDocument htmlOutput, boolean removeResources)
     {
         Element propertyEl = element.getFirstElementByClass(fact.FACT_ENTRY_PROPERTY_CLASS);
         if (propertyEl != null) {
@@ -232,13 +234,13 @@ public class Controller extends DefaultTemplateController
 
                     //an object without a resource URI is newly instantiated and needs a newly generated resource URI
                     Attributes attributes = propertyEl.getAttributes();
-                    Attribute resourceAttr = attributes.get("resource");
+                    Attribute resourceAttr = attributes.get(RDF_RESOURCE_ATTR);
                     if (property.getWidgetType().equals(InputType.Object)) {
                         //remove existing attributes
                         if (removeResources) {
                             if (resourceAttr != null) {
                                 Map<String, String> newAttributes = htmlOutput.replace(attributes, false);
-                                newAttributes.remove("resource");
+                                newAttributes.remove(RDF_RESOURCE_ATTR);
                             }
                         }
                         //create and init the attribute if it doesn't exist
@@ -246,7 +248,7 @@ public class Controller extends DefaultTemplateController
                             if (resourceAttr == null || StringUtils.isEmpty(resourceAttr.getValue())) {
                                 Map<String, String> newAttributes = htmlOutput.replace(attributes, false);
                                 //note that since the @about attribute of pages is relative, we also keep this relative
-                                newAttributes.put("resource", RdfTools.createRelativeResourceId(rdfClass).toString());
+                                newAttributes.put(RDF_RESOURCE_ATTR, RdfTools.createRelativeResourceId(rdfClass).toString());
                             }
                         }
                     }
