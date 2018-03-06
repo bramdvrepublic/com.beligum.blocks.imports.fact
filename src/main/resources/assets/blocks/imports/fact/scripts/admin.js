@@ -721,9 +721,8 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 }
             }
 
-            //this gives us a chance to skip this if it would be needed
-            //Note: we don't call it if we're in the sidebar because we're hiding the propElements of empty properties
-            if (typeof firstValue !== typeof undefined && !inSidebar) {
+            //if a good first value is coming in, we need to initialize the propElement attributes and the state of the sidebar-widget
+            if (typeof firstValue !== typeof undefined) {
                 //init the input and filter it if needed;
                 // this filter sits between the value in the @content attribute and the setter function for the input widget
                 // so we can do some preprocessing before passing it to the widget
