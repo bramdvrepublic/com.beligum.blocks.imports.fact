@@ -71,7 +71,7 @@ public class Controller extends DefaultTemplateController
     }
     /**
      * Note that we could actually only normalize during save, because a new page should be rendered out correctly
-     * if the fiche entry was normalized during save. But by doing it just before a copy, we are backwards compatible.
+     * if the fact entry was normalized during save. But by doing it just before a copy, we are backwards compatible.
      */
     @Override
     public void prepareForCopy(Source source, Element element, OutputDocument htmlOutput, URI targetUri, Locale targetLanguage) throws IOException

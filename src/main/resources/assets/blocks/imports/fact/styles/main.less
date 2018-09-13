@@ -45,7 +45,8 @@ blocks-fact-entry {
     margin-bottom: 15px;
   }
 
-  [data-property='@{FACT_ENTRY_NAME_PROPERTY}'] {
+  [property='@{FACT_ENTRY_NAME_PROPERTY}'],
+  [data-property='@{FACT_ENTRY_NAME_PROPERTY}']{
     .make-md-column(4);
     font-weight: bold;
 
@@ -54,7 +55,8 @@ blocks-fact-entry {
     }
   }
 
-  [data-property='@{FACT_ENTRY_VALUE_PROPERTY}'] {
+  [property='@{FACT_ENTRY_VALUE_PROPERTY}'],
+  [data-property='@{FACT_ENTRY_VALUE_PROPERTY}']{
     .make-md-column(8);
 
     p:last-child {
