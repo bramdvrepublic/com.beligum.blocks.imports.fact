@@ -1,8 +1,10 @@
 <meta property="blocks:title" content="$MESSAGES.blocks.imports.fact.entryBlockTitle">
 <meta property="blocks:description" content="$MESSAGES.blocks.imports.fact.entryBlockDescription">
 <meta property="blocks:icon" content="fa-list-alt">
-
 <meta property="blocks:controller" content="com.beligum.blocks.imports.fact.Controller">
+## we don't have property meta information inlined in this html because of the property-in-data-property trick;
+## this means: make the allowed properties in this template dynamic, based on the properties of the current class (typeof)
+<meta property="blocks:properties" content="_class">
 
 ## PUBLIC STYLES
 <link href="/assets/blocks/imports/fact/styles/main.less" rel="stylesheet"/>
