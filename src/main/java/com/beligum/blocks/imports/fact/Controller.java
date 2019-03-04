@@ -20,7 +20,7 @@ import com.beligum.base.resources.ifaces.Source;
 import com.beligum.base.server.R;
 import com.beligum.base.templating.ifaces.TemplateContext;
 import com.beligum.blocks.config.InputType;
-import com.beligum.blocks.config.RdfFactory;
+import com.beligum.blocks.rdf.RdfFactory;
 import com.beligum.blocks.endpoints.ifaces.AutocompleteSuggestion;
 import com.beligum.blocks.endpoints.ifaces.RdfQueryEndpoint;
 import com.beligum.blocks.endpoints.ifaces.ResourceInfo;
