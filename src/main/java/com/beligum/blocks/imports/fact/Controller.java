@@ -103,11 +103,11 @@ public class Controller extends DefaultTemplateController
         if (propertyEl != null) {
             String resourceType = HtmlTemplate.getPropertyAttribute(propertyEl.getStartTag());
             if (!StringUtils.isEmpty(resourceType)) {
-                RdfClass rdfClass = RdfFactory.getClassForResourceType(URI.create(resourceType));
-                if (rdfClass != null && rdfClass instanceof RdfProperty) {
+                RdfProperty rdfProperty = RdfFactory.getProperty(resourceType);
+                if (rdfProperty != null) {
                     Element labelEl = element.getFirstElement(HtmlParser.NON_RDF_PROPERTY_ATTR, fact.FACT_ENTRY_NAME_PROPERTY, false);
                     if (labelEl != null) {
-                        String testLabel = R.i18n().get(rdfClass.getLabelMessage(), source.getLanguage());
+                        String testLabel = R.i18n().get(rdfProperty.getLabelMessage(), source.getLanguage());
 
                         Iterator<Segment> labelContentIter = labelEl.getNodeIterator();
                         while (labelContentIter.hasNext()) {
@@ -120,7 +120,7 @@ public class Controller extends DefaultTemplateController
                                     String variable = new StringBuilder().append(R.resourceManager().getTemplateEngine().getVariablePrefix())
                                                                          .append(TemplateContext.InternalProperties.MESSAGES.name())
                                                                          .append(R.resourceManager().getTemplateEngine().getPathSeparator())
-                                                                         .append(rdfClass.getLabelKey())
+                                                                         .append(rdfProperty.getLabelKey())
                                                                          .toString();
                                     htmlOutput.replace(labelContent, variable);
                                 }
@@ -141,15 +141,14 @@ public class Controller extends DefaultTemplateController
         if (propertyEl != null) {
             String resourceType = HtmlTemplate.getPropertyAttribute(propertyEl.getStartTag());
             if (!StringUtils.isEmpty(resourceType)) {
-                RdfClass rdfClass = RdfFactory.getClassForResourceType(URI.create(resourceType));
-                if (rdfClass != null && rdfClass instanceof RdfProperty) {
-                    RdfProperty property = (RdfProperty) rdfClass;
+                RdfProperty rdfProperty = RdfFactory.getProperty(resourceType);
+                if (rdfProperty != null) {
 
                     String content = propertyEl.getAttributeValue(RDF_CONTENT_ATTR);
                     String resource = propertyEl.getAttributeValue(RDF_RESOURCE_ATTR);
                     if (content != null || resource != null) {
 
-                        switch (property.getWidgetType()) {
+                        switch (rdfProperty.getWidgetType()) {
                             case Editor:
                             case InlineEditor:
                             case Boolean:
@@ -165,7 +164,7 @@ public class Controller extends DefaultTemplateController
                                 //this flag only controls how the value above is rendered out to the html, not how it's stored
                                 ZoneId zone = RdfTools.parseRdfaBoolean(propertyEl.getAttributeValue(INPUT_TYPE_TIME_GMT_ATTR)) ? UTC : ZoneId.systemDefault();
 
-                                switch (property.getWidgetType()) {
+                                switch (rdfProperty.getWidgetType()) {
                                     case Date:
                                         htmlOutput.replace(propertyEl.getContent(), RdfTools.serializeDateHtml(zone, toLanguage, value));
                                         break;
@@ -182,7 +181,7 @@ public class Controller extends DefaultTemplateController
                             case Enum:
 
                                 //note: contrary to the resource endpoint below, we want the endpoint of the property, not the class, so don't use property.getDataType().getEndpoint() here
-                                Collection<AutocompleteSuggestion> enumSuggestion = property.getEndpoint().search(property, content, RdfQueryEndpoint.QueryType.NAME, toLanguage, 1);
+                                Collection<AutocompleteSuggestion> enumSuggestion = rdfProperty.getEndpoint().search(rdfProperty, content, RdfQueryEndpoint.QueryType.NAME, toLanguage, 1);
                                 if (enumSuggestion.size() == 1) {
                                     htmlOutput.replace(propertyEl.getContent(), RdfTools.serializeEnumHtml(enumSuggestion.iterator().next()));
                                 }
@@ -191,7 +190,7 @@ public class Controller extends DefaultTemplateController
 
                             case Resource:
 
-                                ResourceInfo resourceInfo = property.getDataType().getEndpoint().getResource(property.getDataType(), URI.create(resource), toLanguage);
+                                ResourceInfo resourceInfo = rdfProperty.getDataType().getEndpoint().getResource(rdfProperty.getDataType(), URI.create(resource), toLanguage);
                                 if (resourceInfo != null) {
                                     htmlOutput.replace(propertyEl.getContent(), RdfTools.serializeResourceHtml(resourceInfo));
                                 }
@@ -211,7 +210,7 @@ public class Controller extends DefaultTemplateController
                                 break;
 
                             default:
-                                throw new IOException("Encountered unimplemented widget type parser, please fix; " + property.getWidgetType());
+                                throw new IOException("Encountered unimplemented widget type parser, please fix; " + rdfProperty.getWidgetType());
                         }
                     }
                 }
@@ -228,14 +227,13 @@ public class Controller extends DefaultTemplateController
         if (propertyEl != null) {
             String resourceType = HtmlTemplate.getPropertyAttribute(propertyEl.getStartTag());
             if (!StringUtils.isEmpty(resourceType)) {
-                RdfClass rdfClass = RdfFactory.getClassForResourceType(URI.create(resourceType));
-                if (rdfClass != null && rdfClass instanceof RdfProperty) {
-                    RdfProperty property = (RdfProperty) rdfClass;
+                RdfProperty rdfProperty = RdfFactory.getProperty(resourceType);
+                if (rdfProperty != null) {
 
                     //an object without a resource URI is newly instantiated and needs a newly generated resource URI
                     Attributes attributes = propertyEl.getAttributes();
                     Attribute resourceAttr = attributes.get(RDF_RESOURCE_ATTR);
-                    if (property.getWidgetType().equals(InputType.Object)) {
+                    if (rdfProperty.getWidgetType().equals(InputType.Object)) {
                         //remove existing attributes
                         if (removeResources) {
                             if (resourceAttr != null) {
@@ -248,7 +246,7 @@ public class Controller extends DefaultTemplateController
                             if (resourceAttr == null || StringUtils.isEmpty(resourceAttr.getValue())) {
                                 Map<String, String> newAttributes = htmlOutput.replace(attributes, false);
                                 //note that since the @about attribute of pages is relative, we also keep this relative
-                                newAttributes.put(RDF_RESOURCE_ATTR, RdfTools.createRelativeResourceId(rdfClass).toString());
+                                newAttributes.put(RDF_RESOURCE_ATTR, RdfTools.createRelativeResourceId(rdfProperty).toString());
                             }
                         }
                     }

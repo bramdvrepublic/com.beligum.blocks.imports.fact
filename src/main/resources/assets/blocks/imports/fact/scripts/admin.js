@@ -772,7 +772,12 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             };
 
             retVal = this.addUniqueAttributeValueAsync(Sidebar, propElement, _this._buildSidebarObjectLabel(valueTerm), CONTENT_ATTR,
-                valueTerm.widgetConfig[BlocksConstants.INPUT_TYPE_CONFIG_RESOURCE_AC_ENDPOINT], "title", "value", changeListener, true);
+                valueTerm.widgetConfig[BlocksConstants.INPUT_TYPE_CONFIG_RESOURCE_AC_ENDPOINT], "title", "value",
+                changeListener,
+                {
+                    name: BlocksMessages.comboboxEmptySelection,
+                    value: ''
+                });
 
             //call it once in a hacky way to set the default value
             //Note: we don't call it if we're in the sidebar because we're hiding the propElements of empty properties
