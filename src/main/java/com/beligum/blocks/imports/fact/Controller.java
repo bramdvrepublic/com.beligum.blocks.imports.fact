@@ -20,11 +20,9 @@ import com.beligum.base.resources.ifaces.Source;
 import com.beligum.base.server.R;
 import com.beligum.base.templating.ifaces.TemplateContext;
 import com.beligum.blocks.config.InputType;
+import com.beligum.blocks.index.ifaces.ResourceProxy;
 import com.beligum.blocks.rdf.RdfFactory;
-import com.beligum.blocks.endpoints.ifaces.AutocompleteSuggestion;
-import com.beligum.blocks.endpoints.ifaces.RdfQueryEndpoint;
-import com.beligum.blocks.endpoints.ifaces.ResourceInfo;
-import com.beligum.blocks.rdf.ifaces.RdfClass;
+import com.beligum.blocks.rdf.ifaces.RdfEndpoint;
 import com.beligum.blocks.rdf.ifaces.RdfProperty;
 import com.beligum.blocks.templating.blocks.DefaultTemplateController;
 import com.beligum.blocks.templating.blocks.HtmlParser;
@@ -181,16 +179,17 @@ public class Controller extends DefaultTemplateController
                             case Enum:
 
                                 //note: contrary to the resource endpoint below, we want the endpoint of the property, not the class, so don't use property.getDataType().getEndpoint() here
-                                Collection<AutocompleteSuggestion> enumSuggestion = rdfProperty.getEndpoint().search(rdfProperty, content, RdfQueryEndpoint.QueryType.NAME, toLanguage, 1);
-                                if (enumSuggestion.size() == 1) {
-                                    htmlOutput.replace(propertyEl.getContent(), RdfTools.serializeEnumHtml(enumSuggestion.iterator().next()));
+                                Iterable<ResourceProxy> enumSuggestion = rdfProperty.getEndpoint().search(rdfProperty, content, RdfEndpoint.QueryType.NAME, toLanguage, 1);
+                                Iterator<ResourceProxy> iter = enumSuggestion.iterator();
+                                if (iter.hasNext()) {
+                                    htmlOutput.replace(propertyEl.getContent(), RdfTools.serializeEnumHtml(iter.next()));
                                 }
 
                                 break;
 
                             case Resource:
 
-                                ResourceInfo resourceInfo = rdfProperty.getDataType().getEndpoint().getResource(rdfProperty.getDataType(), URI.create(resource), toLanguage);
+                                ResourceProxy resourceInfo = rdfProperty.getDataType().getEndpoint().getResource(rdfProperty.getDataType(), URI.create(resource), toLanguage);
                                 if (resourceInfo != null) {
                                     htmlOutput.replace(propertyEl.getContent(), RdfTools.serializeResourceHtml(resourceInfo));
                                 }
