@@ -34,8 +34,8 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
     var LANGUAGE_ATTR = "lang";
     //makes sense to use the curie name of the terms and classes in the ontologies; it's short and future-flexible
     var TERM_NAME_FIELD = "curieName";
-    //we'll use the 'title' property of a term as the label of that property
-    var TERM_LABEL_FIELD = "title";
+    //we'll use the 'label' property of a term as the label of that property
+    var TERM_LABEL_FIELD = "label";
 
     //Formats for human readable date & time
     var DATE_TIME_LOCALE = BaseMessages.locale;
@@ -772,7 +772,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             };
 
             retVal = this.addUniqueAttributeValueAsync(Sidebar, propElement, _this._buildSidebarObjectLabel(valueTerm), CONTENT_ATTR,
-                valueTerm.widgetConfig[BlocksConstants.INPUT_TYPE_CONFIG_RESOURCE_AC_ENDPOINT], "title", "value",
+                valueTerm.widgetConfig[BlocksConstants.INPUT_TYPE_CONFIG_RESOURCE_AC_ENDPOINT], "label", "resource",
                 changeListener,
                 {
                     name: BlocksMessages.comboboxEmptySelection,
