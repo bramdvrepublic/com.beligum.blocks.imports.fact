@@ -19,7 +19,7 @@ package com.beligum.blocks.imports.fact;
 import com.beligum.base.resources.ifaces.Source;
 import com.beligum.base.server.R;
 import com.beligum.base.templating.ifaces.TemplateContext;
-import com.beligum.blocks.config.InputType;
+import com.beligum.blocks.config.WidgetType;
 import com.beligum.blocks.index.ifaces.ResourceProxy;
 import com.beligum.blocks.rdf.RdfFactory;
 import com.beligum.blocks.rdf.ifaces.RdfEndpoint;
@@ -232,7 +232,7 @@ public class Controller extends DefaultTemplateController
                     //an object without a resource URI is newly instantiated and needs a newly generated resource URI
                     Attributes attributes = propertyEl.getAttributes();
                     Attribute resourceAttr = attributes.get(RDF_RESOURCE_ATTR);
-                    if (rdfProperty.getWidgetType().equals(InputType.Object)) {
+                    if (rdfProperty.getWidgetType().equals(WidgetType.Object)) {
                         //remove existing attributes
                         if (removeResources) {
                             if (resourceAttr != null) {

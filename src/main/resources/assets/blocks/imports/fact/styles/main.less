@@ -95,9 +95,14 @@ blocks-fact-entry {
     }
 
     .@{INPUT_TYPE_RESOURCE} {
-      //make sure the image of a resource doesn't grow all the way when it's huge
-      a img {
-        max-width: 100%;
+      a {
+        //make sure the contents of the link is fully wrapped by this container
+        display: inline-block;
+
+        img {
+          //make sure the image of a resource doesn't grow all the way when it's huge
+          max-width: 100%;
+        }
       }
     }
 

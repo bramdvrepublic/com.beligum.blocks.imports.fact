@@ -17,7 +17,7 @@
 /**
  * Created by bram on 25/02/16.
  */
-base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Block", "base.core.Commons", "blocks.core.Sidebar", "messages.base.core", "constants.blocks.core", "messages.blocks.core", "constants.blocks.imports.fact", "messages.blocks.imports.fact", "constants.blocks.imports.text", "blocks.core.Notification", function (Class, Block, Commons, Sidebar, BaseMessages, BlocksConstants, BlocksMessages, FactConstants, FactMessages, TextConstants, Notification)
+base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Block", "base.core.Commons", "blocks.core.Sidebar", "blocks.core.Broadcaster", "messages.base.core", "constants.blocks.core", "messages.blocks.core", "constants.blocks.imports.fact", "messages.blocks.imports.fact", "constants.blocks.imports.text", "blocks.core.Notification", function (Class, Block, Commons, Sidebar, Broadcaster, BaseMessages, BlocksConstants, BlocksMessages, FactConstants, FactMessages, TextConstants, Notification)
 {
     var BlocksFactEntry = this;
     this.TAGS = ["blocks-fact-entry"];
@@ -32,8 +32,8 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
     var CONTENT_ATTR = "content";
     var HTML_LANGUAGE_ATTR = "lang";
     var LANGUAGE_ATTR = "lang";
-    //makes sense to use the curie name of the terms and classes in the ontologies; it's short and future-flexible
-    var TERM_NAME_FIELD = "curieName";
+    //makes sense to use the curie of the terms and classes in the ontologies; it's short and future-flexible
+    var TERM_NAME_FIELD = "curie";
     //we'll use the 'label' property of a term as the label of that property
     var TERM_LABEL_FIELD = "label";
 
@@ -117,7 +117,11 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             }
 
             var combobox = this.addUniqueAttributeValueAsync(Sidebar, propElement, FactMessages.propertyTypeLabel, PROPERTY_ATTR, endpointURL, TERM_LABEL_FIELD, TERM_NAME_FIELD,
-                function changeListener(oldValueTerm, newValueTerm)
+                function initListener(initialValueTerm)
+                {
+                },
+                // Note: this _doesn't_ get called when the block is focused, but no property type is selected yet
+                function changeListener(oldValueTerm, newValueTerm, event)
                 {
                     //this is a good place to iterate the fact entries and mark the doubles
                     //(don't worry if it gets called multiple times, I just hope it's not too slow)
@@ -182,13 +186,12 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                     }
 
                     //If we reach this point, the element needs to change, so setup the html property element
-                    _this._updatePropertyElement(_this, false, skipHtmlChange, labelElement, propElement, propElement, newValueTerm, combobox);
-
+                    _this._updatePropertyElement(_this, false, skipHtmlChange, labelElement, propElement, propElement, newValueTerm, combobox, event);
                 });
 
             return combobox;
         },
-        _updatePropertyElement: function (_this, inSidebar, skipHtmlChange, labelElement, propElement, propParentElement, valueTerm, sidebarParent)
+        _updatePropertyElement: function (_this, inSidebar, skipHtmlChange, labelElement, propElement, propParentElement, valueTerm, sidebarParent, event)
         {
             if (!skipHtmlChange) {
 
@@ -272,265 +275,267 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 }
             }
 
-            _this._createWidget(_this, inSidebar, skipHtmlChange, labelElement, propElement, propParentElement, valueTerm, sidebarParent);
+            _this._createWidget(_this, inSidebar, skipHtmlChange, labelElement, propElement, propParentElement, valueTerm, sidebarParent, event);
         },
-        _createWidget: function (_this, inSidebar, skipHtmlChange, labelElement, propElement, propParentElement, newValueTerm, sidebarParent)
+        _createWidget: function (_this, inSidebar, skipHtmlChange, labelElement, propElement, propParentElement, newValueTerm, sidebarParent, event)
         {
             var retVal = {
                 element: null,
             };
 
-            switch (newValueTerm.widgetType) {
-                case BlocksConstants.INPUT_TYPE_EDITOR:
+            if (newValueTerm.widgetType) {
+                switch (newValueTerm.widgetType) {
+                    case BlocksConstants.INPUT_TYPE_EDITOR:
 
-                    retVal.element = _this._createEditorWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, FactMessages.textEntryDefaultValue);
+                        retVal.element = _this._createEditorWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, FactMessages.textEntryDefaultValue, event);
 
-                    break;
-                case BlocksConstants.INPUT_TYPE_INLINE_EDITOR:
+                        break;
+                    case BlocksConstants.INPUT_TYPE_INLINE_EDITOR:
 
-                    retVal.element = _this._createInlineEditorWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, FactMessages.textEntryDefaultValue);
+                        retVal.element = _this._createInlineEditorWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, FactMessages.textEntryDefaultValue, event);
 
-                    break;
-                case BlocksConstants.INPUT_TYPE_BOOLEAN:
+                        break;
+                    case BlocksConstants.INPUT_TYPE_BOOLEAN:
 
-                    //note: the boolean entry is styled using css based on its attributes, and doesn't have real html content,
-                    // so make sure the html is wiped clean
-                    retVal.element = _this._createBooleanWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, null);
+                        retVal.element = _this._createBooleanWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange);
 
-                    break;
-                case BlocksConstants.INPUT_TYPE_NUMBER:
+                        break;
+                    case BlocksConstants.INPUT_TYPE_NUMBER:
 
-                    retVal.element = _this._createInputWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, FactMessages.numberEntryDefaultValue,
-                        'number', FactMessages.numberEntryLabel,
-                        function setterFunction(propElement, defaultValue, newValue)
-                        {
-                            if (newValue && newValue != '') {
-                                propElement.attr(CONTENT_ATTR, newValue);
-                                propElement.html(newValue);
+                        retVal.element = _this._createInputWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, FactMessages.numberEntryDefaultValue, null,
+                            'number', FactMessages.numberEntryLabel,
+                            function setterFunction(propElement, placeholder, newValue)
+                            {
+                                if (newValue && newValue != '') {
+                                    propElement.attr(CONTENT_ATTR, newValue);
+                                    propElement.html(newValue);
+                                }
+                                else {
+                                    //don't remove the attr, set it to empty (or the help text in the HTML will end up as the value)
+                                    propElement.attr(CONTENT_ATTR, '');
+                                    propElement.html(placeholder);
+                                }
+                            },
+                            null,
+                            null);
+
+                        break;
+                    case BlocksConstants.INPUT_TYPE_DATE:
+
+                        retVal.element = _this._createInputWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, '', FactMessages.dateEntryDefaultValue,
+                            'date', FactMessages.dateEntryLabel,
+                            function setterFunction(propElement, placeholder, newValue)
+                            {
+                                //Note that we save all date values as GMT (if you need timezone functionality, use the dateTime widget)
+                                return _this._dateTimeSetterFunction(_this, propElement, placeholder, newValue, DATE_TIME_ENUM_DATE, DATE_FORMAT, DATE_VALUE_FORMAT, null, true);
+                            },
+                            function widgetSetterFilterFunction(contentValue)
+                            {
+                                return _this._dateTimeWidgetSetterFilterFunction(_this, propElement, contentValue, DATE_VALUE_FORMAT, DATE_WIDGET_FORMAT, true);
+                            },
+                            null);
+
+                        break;
+                    case BlocksConstants.INPUT_TYPE_TIME:
+
+                        retVal.element = _this._createInputWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, '', FactMessages.timeEntryDefaultValue,
+                            'time', FactMessages.timeEntryLabel,
+                            function setterFunction(propElement, placeholder, newValue)
+                            {
+                                return _this._dateTimeSetterFunction(_this, propElement, placeholder, newValue, DATE_TIME_ENUM_TIME, TIME_FORMAT, TIME_VALUE_FORMAT, TIMEZONE_FORMAT, false);
+                            },
+                            function widgetSetterFilterFunction(contentValue)
+                            {
+                                return _this._dateTimeWidgetSetterFilterFunction(_this, propElement, contentValue, TIME_VALUE_FORMAT, TIME_WIDGET_FORMAT, false);
+                            },
+                            function extraHtmlFunction(updateCallback)
+                            {
+                                return _this._dateTimeExtraHtmlFunction(_this, inSidebar, propElement, newValueTerm, updateCallback);
                             }
-                            else {
-                                //don't remove the attr, set it to empty (or the help text in the HTML will end up as the value)
-                                propElement.attr(CONTENT_ATTR, '');
-                                propElement.html(defaultValue);
+                        );
+
+                        break;
+                    case BlocksConstants.INPUT_TYPE_DATETIME:
+
+                        retVal.element = _this._createInputWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, '', FactMessages.datetimeEntryDefaultValue,
+                            'datetime-local', FactMessages.dateTimeEntryLabel,
+                            function setterFunction(propElement, placeholder, newValue)
+                            {
+                                return _this._dateTimeSetterFunction(_this, propElement, placeholder, newValue, DATE_TIME_ENUM_DATETIME, DATE_TIME_FORMAT, DATE_TIME_VALUE_FORMAT, TIMEZONE_FORMAT, false);
+                            },
+                            function widgetSetterFilterFunction(contentValue)
+                            {
+                                return _this._dateTimeWidgetSetterFilterFunction(_this, propElement, contentValue, DATE_TIME_VALUE_FORMAT, DATE_TIME_WIDGET_FORMAT, false);
+                            },
+                            function extraHtmlFunction(updateCallback)
+                            {
+                                return _this._dateTimeExtraHtmlFunction(_this, inSidebar, propElement, newValueTerm, updateCallback);
                             }
-                        },
-                        null,
-                        null);
+                        );
 
-                    break;
-                case BlocksConstants.INPUT_TYPE_DATE:
+                        break;
+                    case BlocksConstants.INPUT_TYPE_COLOR:
 
-                    retVal.element = _this._createInputWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, FactMessages.dateEntryDefaultValue,
-                        'date', FactMessages.dateEntryLabel,
-                        function setterFunction(propElement, defaultValue, newValue)
-                        {
-                            //Note that we save all date values as GMT (if you need timezone functionality, use the dateTime widget)
-                            return _this._dateTimeSetterFunction(_this, propElement, defaultValue, newValue, DATE_TIME_ENUM_DATE, DATE_FORMAT, DATE_VALUE_FORMAT, null, true);
-                        },
-                        function widgetSetterFilterFunction(contentValue)
-                        {
-                            return _this._dateTimeWidgetSetterFilterFunction(_this, propElement, contentValue, DATE_VALUE_FORMAT, DATE_WIDGET_FORMAT, true);
-                        },
-                        null);
+                        // Note that there's also a _this.createColorInput(), but the _createInputWidget() offers us much more control over the default value etc.
+                        retVal.element = _this._createInputWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, '', FactMessages.colorEntryDefaultValue,
+                            'color', FactMessages.colorEntryLabel,
+                            function setterFunction(propElement, placeholder, newValue)
+                            {
+                                if (newValue && newValue !== '' && newValue !== placeholder && newValue.charAt(0) === '#') {
+                                    propElement.attr(CONTENT_ATTR, newValue);
+                                    propElement.html('<div class="' + BlocksConstants.INPUT_TYPE_COLOR_VALUE_CLASS + '" style="background-color: ' + newValue + '"></div>');
+                                }
+                                else {
+                                    //don't remove the attr, set it to empty (or the help text in the HTML will end up as the value)
+                                    propElement.attr(CONTENT_ATTR, '');
+                                    propElement.html(placeholder);
+                                }
+                            },
+                            null,
+                            null);
 
-                    break;
-                case BlocksConstants.INPUT_TYPE_TIME:
+                        break;
 
-                    retVal.element = _this._createInputWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, FactMessages.timeEntryDefaultValue,
-                        'time', FactMessages.timeEntryLabel,
-                        function setterFunction(propElement, defaultValue, newValue)
-                        {
-                            return _this._dateTimeSetterFunction(_this, propElement, defaultValue, newValue, DATE_TIME_ENUM_TIME, TIME_FORMAT, TIME_VALUE_FORMAT, TIMEZONE_FORMAT, false);
-                        },
-                        function widgetSetterFilterFunction(contentValue)
-                        {
-                            return _this._dateTimeWidgetSetterFilterFunction(_this, propElement, contentValue, TIME_VALUE_FORMAT, TIME_WIDGET_FORMAT, false);
-                        },
-                        function extraHtmlFunction(updateCallback)
-                        {
-                            return _this._dateTimeExtraHtmlFunction(_this, inSidebar, propElement, newValueTerm, updateCallback);
+                    case BlocksConstants.INPUT_TYPE_ENUM:
+
+                        retVal.element = _this._createEnumWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, FactMessages.enumEntryDefaultValue);
+
+                        break;
+
+                    case BlocksConstants.INPUT_TYPE_URI:
+
+                        retVal.element = _this._createUriWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, FactMessages.uriEntryDefaultValue);
+
+                        break;
+
+                    case BlocksConstants.INPUT_TYPE_RESOURCE:
+
+                        retVal.element = _this._createResourceWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, FactMessages.resourceEntryDefaultValue);
+
+                        break;
+
+                    case BlocksConstants.INPUT_TYPE_OBJECT:
+
+                        var objDatatypeCurie = newValueTerm.dataType[TERM_NAME_FIELD];
+
+                        //let's create a little group for the config widgets of this object
+                        var objConfigContainer = $('<div class="' + BlocksConstants.PANEL_GROUP_CLASS + '"></div>');
+                        objConfigContainer.append($('<div class="title">' + newValueTerm[TERM_LABEL_FIELD] + '</div>'));
+
+                        retVal.element = objConfigContainer;
+
+                        // Here, we need to decide if this call is about 1) a newly added fact, or 2) an existing one.
+                        // If we're dealing with an existing one: we need to decide if 2a) the server-side data model has changed or 2b) it's still the same
+                        // and if it did change, what we should do about it. So before we make a round trip to the server, we should decide what state we're in.
+                        // Our approach is to only create sub-properties that contain valid information and leave out the rest (just like a regular fact entry on a page)
+                        // This means the html for the sub-property is only created when the user configures it's widget in the sidebar.
+                        //
+                        // Different states:
+                        //
+                        // 1) this one is easy and easily detected; the above code has filtered out simple re-focus calls,
+                        //    so we can assume new fact blocks always come in the same form.
+                        //    Since our approach is to only create html for all sub-properties that contain information
+                        //    and we assume objects without sub-properties are pointless, we can simple count the sub-property-elements:
+                        //    if there are none, we need to (re)fetch the data model from the server.
+                        // 2) this situation is more complex: we have detected presence of some parts of the objects model in the DOM.
+                        //    But before we can continue, we want to take time and check if the existing model still matches with the model
+                        //    on the server and after that, read in the existing property values into the config controls in the sidebar if needed.
+                        // 2a)
+                        // 2b)
+
+                        //wipe the element if all children are merely text nodes (note that .children() doesn't count simple text children)
+                        if (propElement.children().length == 0) {
+                            _this._resetObjectPropElement(_this, propElement);
                         }
-                    );
 
-                    break;
-                case BlocksConstants.INPUT_TYPE_DATETIME:
-
-                    retVal.element = _this._createInputWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, FactMessages.datetimeEntryDefaultValue,
-                        'datetime-local', FactMessages.dateTimeEntryLabel,
-                        function setterFunction(propElement, defaultValue, newValue)
-                        {
-                            return _this._dateTimeSetterFunction(_this, propElement, defaultValue, newValue, DATE_TIME_ENUM_DATETIME, DATE_TIME_FORMAT, DATE_TIME_VALUE_FORMAT, TIMEZONE_FORMAT, false);
-                        },
-                        function widgetSetterFilterFunction(contentValue)
-                        {
-                            return _this._dateTimeWidgetSetterFilterFunction(_this, propElement, contentValue, DATE_TIME_VALUE_FORMAT, DATE_TIME_WIDGET_FORMAT, false);
-                        },
-                        function extraHtmlFunction(updateCallback)
-                        {
-                            return _this._dateTimeExtraHtmlFunction(_this, inSidebar, propElement, newValueTerm, updateCallback);
-                        }
-                    );
-
-                    break;
-                case BlocksConstants.INPUT_TYPE_COLOR:
-
-                    //TODO we should check and change this to:
-                    //retVal.element = _this.createColorInput(Sidebar, null, null, FactMessages.colorEntryLabel);
-                    retVal.element = _this._createInputWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, FactMessages.colorEntryDefaultValue,
-                        'color', FactMessages.colorEntryLabel,
-                        function setterFunction(propElement, defaultValue, newValue)
-                        {
-                            if (newValue && newValue != '' && newValue.charAt(0) == '#') {
-                                propElement.attr(CONTENT_ATTR, newValue);
-                                propElement.html('<div class="' + BlocksConstants.INPUT_TYPE_COLOR_VALUE_CLASS + '" style="background-color: ' + newValue + '"></div>');
-                            }
-                            else {
-                                //don't remove the attr, set it to empty (or the help text in the HTML will end up as the value)
-                                propElement.attr(CONTENT_ATTR, '');
-                                propElement.html(defaultValue);
-                            }
-                        },
-                        null,
-                        null);
-
-                    break;
-
-                case BlocksConstants.INPUT_TYPE_ENUM:
-
-                    retVal.element = _this._createEnumWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, FactMessages.enumEntryDefaultValue);
-
-                    break;
-
-                case BlocksConstants.INPUT_TYPE_URI:
-
-                    retVal.element = _this._createUriWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, FactMessages.uriEntryDefaultValue);
-
-                    break;
-
-                case BlocksConstants.INPUT_TYPE_RESOURCE:
-
-                    retVal.element = _this._createResourceWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, FactMessages.resourceEntryDefaultValue);
-
-                    break;
-
-                case BlocksConstants.INPUT_TYPE_OBJECT:
-
-                    var objDatatypeCurie = newValueTerm.dataType[TERM_NAME_FIELD];
-
-                    //let's create a little group for the config widgets of this object
-                    var objConfigContainer = $('<div class="' + BlocksConstants.PANEL_GROUP_CLASS + '"></div>');
-                    objConfigContainer.append($('<div class="title">' + newValueTerm[TERM_LABEL_FIELD] + '</div>'));
-
-                    retVal.element = objConfigContainer;
-
-                    // Here, we need to decide if this call is about 1) a newly added fact, or 2) an existing one.
-                    // If we're dealing with an existing one: we need to decide if 2a) the server-side data model has changed or 2b) it's still the same
-                    // and if it did change, what we should do about it. So before we make a round trip to the server, we should decide what state we're in.
-                    // Our approach is to only create sub-properties that contain valid information and leave out the rest (just like a regular fact entry on a page)
-                    // This means the html for the sub-property is only created when the user configures it's widget in the sidebar.
-                    //
-                    // Different states:
-                    //
-                    // 1) this one is easy and easily detected; the above code has filtered out simple re-focus calls,
-                    //    so we can assume new fact blocks always come in the same form.
-                    //    Since our approach is to only create html for all sub-properties that contain information
-                    //    and we assume objects without sub-properties are pointless, we can simple count the sub-property-elements:
-                    //    if there are none, we need to (re)fetch the data model from the server.
-                    // 2) this situation is more complex: we have detected presence of some parts of the objects model in the DOM.
-                    //    But before we can continue, we want to take time and check if the existing model still matches with the model
-                    //    on the server and after that, read in the existing property values into the config controls in the sidebar if needed.
-                    // 2a)
-                    // 2b)
-
-                    //wipe the element if all children are merely text nodes (note that .children() doesn't count simple text children)
-                    if (propElement.children().length == 0) {
-                        _this._resetObjectPropElement(_this, propElement);
-                    }
-
-                    //ask the server to list all the terms of this property's object data type
-                    $.getJSON(BlocksConstants.RDF_PROPERTIES_ENDPOINT + "?" + BlocksConstants.RDF_RES_TYPE_CURIE_PARAM + "=" + objDatatypeCurie)
-                        .done(function (allPropertiesData)
-                        {
-                            //2nd call to server to fetch the main property
-                            $.getJSON(BlocksConstants.RDF_MAIN_PROPERTY_ENDPOINT + "?" + BlocksConstants.RDF_RES_TYPE_CURIE_PARAM + "=" + objDatatypeCurie)
-                                .done(function (mainPropertyData)
-                                {
-                                    var objRefs = {};
-
-                                    $.each(allPropertiesData, function (idx, entry)
+                        //ask the server to list all the terms of this property's object data type
+                        $.getJSON(BlocksConstants.RDF_PROPERTIES_ENDPOINT + "?" + BlocksConstants.RDF_RES_TYPE_CURIE_PARAM + "=" + objDatatypeCurie)
+                            .done(function (allPropertiesData)
+                            {
+                                //2nd call to server to fetch the main property
+                                $.getJSON(BlocksConstants.RDF_MAIN_PROPERTY_ENDPOINT + "?" + BlocksConstants.RDF_RES_TYPE_CURIE_PARAM + "=" + objDatatypeCurie)
+                                    .done(function (mainPropertyData)
                                     {
-                                        var curie = entry[TERM_NAME_FIELD];
-                                        var ref = objRefs[curie];
-                                        if (!ref) {
-                                            ref = [entry];
-                                            objRefs[curie] = ref;
-                                        }
-                                        else {
-                                            ref.push(entry);
-                                        }
+                                        var objRefs = {};
 
-                                        var isMainProperty = mainPropertyData ? mainPropertyData[TERM_NAME_FIELD] === curie : false;
-                                        var objContainer;
-                                        var objLabel;
-                                        var objProp;
-                                        var inSidebar = true;
-                                        var skipHtmlChange;
+                                        $.each(allPropertiesData, function (idx, entry)
+                                        {
+                                            var curie = entry[TERM_NAME_FIELD];
+                                            var ref = objRefs[curie];
+                                            if (!ref) {
+                                                ref = [entry];
+                                                objRefs[curie] = ref;
+                                            }
+                                            else {
+                                                ref.push(entry);
+                                            }
 
-                                        var existingObjProp = propElement.find('[' + PROPERTY_ATTR + '="' + curie + '"]').eq(ref.length - 1);
-                                        if (existingObjProp.length) {
-                                            objContainer = existingObjProp.parent();
-                                            objLabel = objContainer.find('label');
-                                            objProp = existingObjProp;
+                                            var isMainProperty = mainPropertyData ? mainPropertyData[TERM_NAME_FIELD] === curie : false;
+                                            var objContainer;
+                                            var objLabel;
+                                            var objProp;
+                                            var inSidebar = true;
+                                            var skipHtmlChange;
 
-                                            skipHtmlChange = true;
-                                        }
-                                        else {
-                                            //Note: we don't add the element by default, but only if it received some good value
-                                            objContainer = $('<div />');
+                                            var existingObjProp = propElement.find('[' + PROPERTY_ATTR + '="' + curie + '"]').eq(ref.length - 1);
+                                            if (existingObjProp.length) {
+                                                objContainer = existingObjProp.parent();
+                                                objLabel = objContainer.find('label');
+                                                objProp = existingObjProp;
 
-                                            objLabel = $('<label/>')
-                                                .appendTo(objContainer);
+                                                skipHtmlChange = true;
+                                            }
+                                            else {
+                                                //Note: we don't add the element by default, but only if it received some good value
+                                                objContainer = $('<div />');
 
-                                            objProp = $('<div/>')
-                                                .appendTo(objContainer);
+                                                objLabel = $('<label/>')
+                                                    .appendTo(objContainer);
 
-                                            skipHtmlChange = false;
-                                        }
+                                                objProp = $('<div/>')
+                                                    .appendTo(objContainer);
 
-                                        //for sorting (see below)
-                                        objContainer
-                                        //idx is zero-based, but zero is reserved for the main property
-                                            .data(OBJ_INDEX_DATA_KEY, isMainProperty ? 0 : idx + 1)
-                                            .data(OBJ_MAINPROP_DATA_KEY, isMainProperty);
+                                                skipHtmlChange = false;
+                                            }
 
-                                        //let's reuse the key to add some extra metadata to the entry
-                                        entry[OBJ_MAINPROP_DATA_KEY] = isMainProperty;
-                                        if (isMainProperty) {
-                                            //styling is done in css
-                                            objContainer.addClass(FactConstants.FACT_ENTRY_MAINPROP_CLASS);
-                                        }
+                                            //for sorting (see below)
+                                            objContainer
+                                            //idx is zero-based, but zero is reserved for the main property
+                                                .data(OBJ_INDEX_DATA_KEY, isMainProperty ? 0 : idx + 1)
+                                                .data(OBJ_MAINPROP_DATA_KEY, isMainProperty);
 
-                                        _this._updatePropertyElement(_this, inSidebar, skipHtmlChange, objLabel, objProp, propElement, entry, objConfigContainer);
+                                            //let's reuse the key to add some extra metadata to the entry
+                                            entry[OBJ_MAINPROP_DATA_KEY] = isMainProperty;
+                                            if (isMainProperty) {
+                                                //styling is done in css
+                                                objContainer.addClass(FactConstants.FACT_ENTRY_MAINPROP_CLASS);
+                                            }
 
+                                            _this._updatePropertyElement(_this, inSidebar, skipHtmlChange, objLabel, objProp, propElement, entry, objConfigContainer);
+
+                                        });
+                                    })
+                                    .fail(function (xhr, textStatus, exception)
+                                    {
+                                        Notification.error(BlocksMessages.generalServerDataError + (exception ? "; " + exception : ""), xhr);
                                     });
-                                })
-                                .fail(function (xhr, textStatus, exception)
-                                {
-                                    Notification.error(BlocksMessages.generalServerDataError + (exception ? "; " + exception : ""), xhr);
-                                });
-                        })
-                        .fail(function (xhr, textStatus, exception)
-                        {
-                            Notification.error(BlocksMessages.generalServerDataError + (exception ? "; " + exception : ""), xhr);
-                        });
+                            })
+                            .fail(function (xhr, textStatus, exception)
+                            {
+                                Notification.error(BlocksMessages.generalServerDataError + (exception ? "; " + exception : ""), xhr);
+                            });
 
-                    break;
+                        break;
 
-                default:
-                    //we stopped allowing unknown types
-                    Notification.error(Commons.format(FactMessages.unknownWidgetTypeError, newValueTerm.widgetType));
+                    default:
+                        //we stopped allowing unknown types
+                        Notification.error(Commons.format(FactMessages.unknownWidgetTypeError, newValueTerm.widgetType, newValueTerm.curie));
 
-                    break;
+                        break;
+                }
+            }
+            else {
+                Notification.error(Commons.format(FactMessages.emptyWidgetTypeError, newValueTerm.curie));
             }
 
             //add a control to the sidebar if we need to
@@ -548,7 +553,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
 
             return retVal;
         },
-        _createEditorWidget: function (_this, inSidebar, propElement, propParentElement, valueTerm, skipHtmlChange, defaultValue)
+        _createEditorWidget: function (_this, inSidebar, propElement, propParentElement, valueTerm, skipHtmlChange, placeholder, event)
         {
             var retVal = null;
 
@@ -578,20 +583,34 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                         }
                     },
                     _this._buildSidebarObjectLabel(valueTerm),
-                    //Note we don't use the defaultValue as a placeholder because it looks like double info
+                    //Note we don't pass the placeholder because it looks like double info
                     ''
                 );
             }
             else {
                 if (!skipHtmlChange) {
                     //Note: the editor works best with wrapped <p>'s but these are added automatically on edit so let's start clean
-                    propElement.html(defaultValue);
+                    propElement.html(placeholder);
                 }
+
+                // This basically "re-focuses" the block and is needed because the registered selector of admin-text.js
+                // might not exist yet (when the block changed to input type 'editor' in this callback).
+                // The effect of refocusing the sidebar is to check if all config panels are present and create additional
+                // ones if necessary.
+                // Note that we need to call this no matter if we're 'new' or not because clicking outside the editor
+                // element will not activate the toolbar. That's why we force the use of the propElement below
+                // instead of _this.focusedElement
+                Broadcaster.send(Broadcaster.EVENTS.BLOCK.FOCUS, event, {
+                    //this is the blocks-fact-entry element
+                    surface: _this.focusedSurface,
+                    //this is the specific 'deep' html element at this mouse position that was clicked
+                    element: propElement,
+                });
             }
 
             return retVal;
         },
-        _createInlineEditorWidget: function (_this, inSidebar, propElement, propParentElement, valueTerm, skipHtmlChange, defaultValue)
+        _createInlineEditorWidget: function (_this, inSidebar, propElement, propParentElement, valueTerm, skipHtmlChange, placeholder, event)
         {
             var retVal = null;
 
@@ -614,27 +633,41 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                         propElement.html(val);
                     },
                     _this._buildSidebarObjectLabel(valueTerm),
-                    //Note we don't use the defaultValue as a placeholder because it looks like double info in the sidebar
+                    //Note we don't pass the placeholder because it looks like double info in the sidebar
                     '', false, null
                 );
             }
             else {
                 if (!skipHtmlChange) {
                     //Note: the editor works best with wrapped <p>'s
-                    propElement.html(defaultValue);
+                    propElement.html(placeholder);
                 }
 
                 //we're not a span, so force inline mode
                 propElement.attr(TextConstants.OPTIONS_ATTR, TextConstants.OPTIONS_FORCE_INLINE + " " + TextConstants.OPTIONS_NO_TOOLBAR);
+
+                // see _createEditorWidget()
+                Broadcaster.send(Broadcaster.EVENTS.BLOCK.FOCUS, event, {
+                    //this is the blocks-fact-entry element
+                    surface: _this.focusedSurface,
+                    //this is the specific 'deep' html element at this mouse position that was clicked
+                    element: propElement,
+                });
             }
 
             return retVal;
         },
-        _createBooleanWidget: function (_this, inSidebar, propElement, propParentElement, valueTerm, skipHtmlChange, defaultValue)
+        _createBooleanWidget: function (_this, inSidebar, propElement, propParentElement, valueTerm, skipHtmlChange)
         {
             var CONTENT_VALUE_TRUE = "true";
             var CONTENT_VALUE_FALSE = "false";
 
+            // In the sidebar, we enable 'disabled' mode, so the html of the fact is only updated when there's interaction
+            // with the boolean widget. In normal mode, the interaction is already done (we added the fact), and we default
+            // to false, the any previous html (when we switched property type) is wiped and rebuilt.
+            var defaultValue = inSidebar ? undefined : CONTENT_VALUE_FALSE;
+
+            // Note: this function accepts true boolean values, not a string
             var toggleState = function (newState)
             {
                 if (inSidebar) {
@@ -649,17 +682,19 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                     propElement.attr(CONTENT_ATTR, CONTENT_VALUE_FALSE);
                 }
 
-                //Note: we just create a dummy inner <i>, rest is done in CSS, based on the content attribute
+                // Note: we just create a dummy inner <i>, rest is done in CSS, based on the content attribute
                 propElement.html('<div class="' + BlocksConstants.INPUT_TYPE_BOOLEAN_VALUE_CLASS + '" />');
             };
 
-            //in the sidebar, we enable 'disabled' mode
+            // In the sidebar, we enable 'disabled' mode, so the html of the fact is only updated when there's interaction
+            // with the boolean widget. In normal mode, the interaction is already done (we added the fact), and we default
+            // to false, the any previous html (when we switched property type) is wiped and rebuilt.
             var enableDisabled = inSidebar;
             var retVal = this.createToggleButton(inSidebar ? _this._buildSidebarObjectLabel(valueTerm) : FactMessages.booleanEntryLabel,
                 function initStateCallback()
                 {
                     //supports returning undefined to activate disabled state
-                    var retVal = propElement.hasAttribute(CONTENT_ATTR) ? propElement.attr(CONTENT_ATTR) == CONTENT_VALUE_TRUE : undefined;
+                    var retVal = propElement.hasAttribute(CONTENT_ATTR) ? propElement.attr(CONTENT_ATTR) === CONTENT_VALUE_TRUE : defaultValue === CONTENT_VALUE_TRUE;
 
                     if (inSidebar) {
                         _this._initializeOldVal(propElement, retVal);
@@ -677,13 +712,13 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             );
 
             //note: don't fire the change listener if we're in the sidebar, because of the startDisabled flag and the way we're hiding the propElements of empty properties
-            if (!skipHtmlChange && defaultValue != null && !inSidebar) {
-                toggleState(defaultValue);
+            if (!skipHtmlChange && !inSidebar) {
+                toggleState(defaultValue === CONTENT_VALUE_TRUE);
             }
 
             return retVal;
         },
-        _createInputWidget: function (_this, inSidebar, propElement, propParentElement, valueTerm, skipHtmlChange, defaultValue, htmlInputType, labelText, setterFunction, widgetSetterFilterFunction, extraHtmlFunction)
+        _createInputWidget: function (_this, inSidebar, propElement, propParentElement, valueTerm, skipHtmlChange, defaultValue, placeholder, htmlInputType, labelText, setterFunction, widgetSetterFilterFunction, extraHtmlFunction)
         {
             var id = Commons.generateId();
             var retVal = $('<div class="' + BlocksConstants.INPUT_TYPE_WRAPPER_CLASS + '"></div>');
@@ -698,31 +733,28 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             var input = $('<input id="' + id + '" type="' + htmlInputType + '" class="form-control">').appendTo(inputGroup);
 
             //init and attach the change listener
-            var updateCallback = function (propElement, defaultValue, newValue)
+            var updateCallback = function (propElement, placeholder, newValue)
             {
                 if (inSidebar) {
                     _this._checkBasicCreateDestroy(_this, propElement, propParentElement, newValue);
                 }
-                setterFunction(propElement, inSidebar ? null : defaultValue, newValue);
+                setterFunction(propElement, inSidebar ? null : placeholder, newValue);
             };
             input.on("change keyup focus", function (event)
             {
-                updateCallback(propElement, defaultValue, input.val());
+                updateCallback(propElement, placeholder, input.val());
             });
 
 
             var firstValue = propElement.attr(CONTENT_ATTR);
 
             //if the html widget is uninitialized, try to set it to a default value
-            if (firstValue == FactMessages.widgetEntryDefaultValue) {
-                //initial value may be (a valid) 0 or '', so check the type
-                if (typeof defaultValue !== typeof undefined) {
-                    firstValue = defaultValue;
-                }
+            if (Commons.isUnset(firstValue) || firstValue === FactMessages.widgetEntryDefaultValue) {
+                firstValue = defaultValue;
             }
 
             //if a good first value is coming in, we need to initialize the propElement attributes and the state of the sidebar-widget
-            if (typeof firstValue !== typeof undefined) {
+            if (!Commons.isUnset(firstValue)) {
                 //init the input and filter it if needed;
                 // this filter sits between the value in the @content attribute and the setter function for the input widget
                 // so we can do some preprocessing before passing it to the widget
@@ -731,7 +763,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 }
                 input.val(firstValue);
                 //fire the change (because the one above doesn't seem to do so)
-                updateCallback(propElement, defaultValue, firstValue);
+                updateCallback(propElement, placeholder, firstValue);
             }
 
             //note: this should come after the processing of widgetSetterFilterFunction() because
@@ -739,7 +771,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             if (extraHtmlFunction) {
                 var extraHtml = extraHtmlFunction(function ()
                 {
-                    updateCallback(propElement, defaultValue, input.val());
+                    updateCallback(propElement, placeholder, input.val());
                 });
                 if (extraHtml) {
                     var container = $("<div></div>");
@@ -763,7 +795,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             var changeListener = function (oldValueTerm, newValueTerm)
             {
                 //Note: this offers support to 'unset' the combobox
-                var newValue = newValueTerm && newValueTerm.title != '' ? newValueTerm.title : undefined;
+                var newValue = newValueTerm && newValueTerm.label != '' ? newValueTerm.label : undefined;
 
                 if (inSidebar) {
                     _this._checkBasicCreateDestroy(_this, propElement, propParentElement, newValue);
@@ -773,6 +805,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
 
             retVal = this.addUniqueAttributeValueAsync(Sidebar, propElement, _this._buildSidebarObjectLabel(valueTerm), CONTENT_ATTR,
                 valueTerm.widgetConfig[BlocksConstants.INPUT_TYPE_CONFIG_RESOURCE_AC_ENDPOINT], "label", "resource",
+                null,
                 changeListener,
                 {
                     name: BlocksMessages.comboboxEmptySelection,
@@ -866,7 +899,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                         // "If no @resource is present, then @href or @src are next in priority order for setting the object."
                         // (see https://www.w3.org/TR/rdfa-syntax/#using-href-or-src-to-set-the-object)
                         // thus supplying both a @resource with a wrapped @href as below is valid.
-                        propElement.attr(RESOURCE_ATTR, newValue.resourceUri);
+                        propElement.attr(RESOURCE_ATTR, newValue.resource);
 
                         var labelHtml = newValue.label;
                         //if the value has an image, it takes precedence of the label and we render an image instead of text
@@ -876,11 +909,11 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                         }
 
                         //if the value has a link, let's render a hyperlink
-                        if (newValue.link) {
-                            var link = $('<a href="' + newValue.link + '">' + labelHtml + '</a>');
+                        if (newValue.uri) {
+                            var link = $('<a href="' + newValue.uri + '">' + labelHtml + '</a>');
                             //little trick to get the hostname of an url: put it in a link element (which we need anyway) and query for the raw JS hostname
                             //also note that we can force an external link server side with the externalLink property
-                            if (newValue.externalLink || link[0].hostname != document.location.hostname) {
+                            if (newValue.external || link[0].hostname != document.location.hostname) {
                                 link.attr("target", "_blank");
                             }
                             propElement.html(link);
@@ -936,7 +969,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
 
             return retVal;
         },
-        _dateTimeSetterFunction: function (_this, propElement, defaultValue, newValue, dateTimeEnum, dateTimeFormat, dateTimeValueFormat, timezoneFormat, forceGmt)
+        _dateTimeSetterFunction: function (_this, propElement, placeholder, newValue, dateTimeEnum, dateTimeFormat, dateTimeValueFormat, timezoneFormat, forceGmt)
         {
             //here we have two possibilities:
             //1) the value comes in from the datetime-local (or date or time) widget, meaning it has no timezone specified
@@ -950,7 +983,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             // https://www.w3.org/TR/xmlschema-2/#time
             // https://www.w3.org/TR/xmlschema-2/#date
             // https://www.w3.org/TR/xmlschema-2/#dateTime
-            if (newValue && newValue != '') {
+            if (newValue && newValue !== '') {
 
                 //first of all, we need to decide if we're dealing with a time, a date or a dateTime
                 //what comes in is the value as returned by the widget, so we try to detect as general as possible
@@ -1007,7 +1040,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             else {
                 //don't remove the attr, set it to empty (or the help text in the HTML will end up as the value)
                 propElement.attr(CONTENT_ATTR, '');
-                propElement.html(defaultValue);
+                propElement.html(placeholder);
             }
         },
         /**

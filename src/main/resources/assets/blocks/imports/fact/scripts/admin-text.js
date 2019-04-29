@@ -17,7 +17,7 @@
 /**
  * Created by bram on 24/02/16.
  */
-base.plugin("blocks.imports.FactEntryText", ["base.core.Class", "blocks.imports.Text", "constants.blocks.core", "constants.blocks.imports.fact", function (Class, Text, BlocksConstants, FactConstants)
+base.plugin("blocks.imports.FactEntryText", ["base.core.Class", "blocks.imports.Text", "blocks.core.MediumEditor", "constants.blocks.core", "constants.blocks.imports.fact", function (Class, Text, Editor, BlocksConstants, FactConstants)
 {
     var BlocksFactEntryText = this;
     this.TAGS = [
@@ -39,6 +39,23 @@ base.plugin("blocks.imports.FactEntryText", ["base.core.Class", "blocks.imports.
         },
 
         //-----IMPLEMENTED METHODS-----
+        focus: function (block, element, hotspot, event)
+        {
+            var retVal = BlocksFactEntryText.Class.Super.prototype.focus.call(this, block, element, hotspot, event);
+
+            // it makes sense to select all text in the fact block when we gain focus,
+            // so the user can type right away to replace the content
+            Editor.getActiveEditor().selectAllContents();
+
+            // This aligns the toolbar with the overlay of the fact block,
+            // which actually aligns it all the way to the left, while the value will
+            // probably be on the right. This alters the toolbar anchor element.
+            // var editorToolbar = Editor.getActiveToolbar();
+            // editorToolbar.anchorElement = element;
+            // editorToolbar.setToolbarPosition();
+
+            return retVal;
+        },
         getConfigs: function (block, element)
         {
             return BlocksFactEntryText.Class.Super.prototype.getConfigs.call(this, block, element);
