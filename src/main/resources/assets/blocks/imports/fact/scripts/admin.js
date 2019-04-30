@@ -17,7 +17,7 @@
 /**
  * Created by bram on 25/02/16.
  */
-base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Block", "base.core.Commons", "blocks.core.Sidebar", "blocks.core.Broadcaster", "messages.base.core", "constants.blocks.core", "messages.blocks.core", "constants.blocks.imports.fact", "messages.blocks.imports.fact", "constants.blocks.imports.text", "blocks.core.Notification", function (Class, Block, Commons, Sidebar, Broadcaster, BaseMessages, BlocksConstants, BlocksMessages, FactConstants, FactMessages, TextConstants, Notification)
+base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Block", "base.core.Commons", "blocks.core.Sidebar", "blocks.core.Broadcaster", "messages.base.core", "constants.blocks.core", "messages.blocks.core", "constants.blocks.imports.fact", "messages.blocks.imports.fact", "constants.blocks.imports.text", "blocks.core.Notification", "blocks.core.MediumEditor", function (Class, Block, Commons, Sidebar, Broadcaster, BaseMessages, BlocksConstants, BlocksMessages, FactConstants, FactMessages, TextConstants, Notification, MediumEditor)
 {
     var BlocksFactEntry = this;
     this.TAGS = ["blocks-fact-entry"];
@@ -590,22 +590,29 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             else {
                 if (!skipHtmlChange) {
                     //Note: the editor works best with wrapped <p>'s but these are added automatically on edit so let's start clean
-                    propElement.html(placeholder);
-                }
+                    //propElement.html('<p>'+placeholder+'</p>');
 
-                // This basically "re-focuses" the block and is needed because the registered selector of admin-text.js
-                // might not exist yet (when the block changed to input type 'editor' in this callback).
-                // The effect of refocusing the sidebar is to check if all config panels are present and create additional
-                // ones if necessary.
-                // Note that we need to call this no matter if we're 'new' or not because clicking outside the editor
-                // element will not activate the toolbar. That's why we force the use of the propElement below
-                // instead of _this.focusedElement
-                Broadcaster.send(Broadcaster.EVENTS.BLOCK.FOCUS, event, {
-                    //this is the blocks-fact-entry element
-                    surface: _this.focusedSurface,
-                    //this is the specific 'deep' html element at this mouse position that was clicked
-                    element: propElement,
-                });
+                    // note: the editor doesn't exist yet, it will be activated by the focus call below,
+                    // so set a timeout
+                    setTimeout(function(){
+                        // note: use this instead of html('') so it triggers the editableInput event
+                        MediumEditor.getActiveEditor().setContent('');
+                    }, 100);
+
+                    // This basically "re-focuses" the block and is needed because the registered selector of admin-text.js
+                    // might not exist yet (when the block changed to input type 'editor' in this callback).
+                    // The effect of refocusing the sidebar is to check if all config panels are present and create additional
+                    // ones if necessary.
+                    // Note that we need to call this no matter if we're 'new' or not because clicking outside the editor
+                    // element will not activate the toolbar. That's why we force the use of the propElement below
+                    // instead of _this.focusedElement
+                    Broadcaster.send(Broadcaster.EVENTS.BLOCK.FOCUS, event, {
+                        //this is the blocks-fact-entry element
+                        surface: _this.focusedSurface,
+                        //this is the specific 'deep' html element at this mouse position that was clicked
+                        element: propElement,
+                    });
+                }
             }
 
             return retVal;
@@ -639,20 +646,23 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             }
             else {
                 if (!skipHtmlChange) {
-                    //Note: the editor works best with wrapped <p>'s
-                    propElement.html(placeholder);
+                    // see _createEditorWidget()
+                    setTimeout(function(){
+                        // note: use this instead of html('') so it triggers the editableInput event
+                        MediumEditor.getActiveEditor().setContent('');
+                    }, 100);
+
+                    // see _createEditorWidget()
+                    Broadcaster.send(Broadcaster.EVENTS.BLOCK.FOCUS, event, {
+                        //this is the blocks-fact-entry element
+                        surface: _this.focusedSurface,
+                        //this is the specific 'deep' html element at this mouse position that was clicked
+                        element: propElement,
+                    });
                 }
 
                 //we're not a span, so force inline mode
                 propElement.attr(TextConstants.OPTIONS_ATTR, TextConstants.OPTIONS_FORCE_INLINE + " " + TextConstants.OPTIONS_NO_TOOLBAR);
-
-                // see _createEditorWidget()
-                Broadcaster.send(Broadcaster.EVENTS.BLOCK.FOCUS, event, {
-                    //this is the blocks-fact-entry element
-                    surface: _this.focusedSurface,
-                    //this is the specific 'deep' html element at this mouse position that was clicked
-                    element: propElement,
-                });
             }
 
             return retVal;
@@ -1167,7 +1177,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 propParentElement.append(allPropChildren);
             }
         },
-        _initializeOldVal: function(propElement, val)
+        _initializeOldVal: function (propElement, val)
         {
             //initialize the old value store, but don't overwrite
             //Note: this is required for come-back-and-edit to work, see _checkBasicCreateDestroy()

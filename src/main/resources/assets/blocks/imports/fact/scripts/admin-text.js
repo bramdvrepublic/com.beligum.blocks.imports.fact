@@ -17,7 +17,7 @@
 /**
  * Created by bram on 24/02/16.
  */
-base.plugin("blocks.imports.FactEntryText", ["base.core.Class", "blocks.imports.Text", "blocks.core.MediumEditor", "constants.blocks.core", "constants.blocks.imports.fact", function (Class, Text, Editor, BlocksConstants, FactConstants)
+base.plugin("blocks.imports.FactEntryText", ["base.core.Class", "blocks.imports.Text", "blocks.core.MediumEditor", "constants.blocks.core", "constants.blocks.imports.fact", function (Class, Text, MediumEditor, BlocksConstants, FactConstants)
 {
     var BlocksFactEntryText = this;
     this.TAGS = [
@@ -43,9 +43,12 @@ base.plugin("blocks.imports.FactEntryText", ["base.core.Class", "blocks.imports.
         {
             var retVal = BlocksFactEntryText.Class.Super.prototype.focus.call(this, block, element, hotspot, event);
 
-            // it makes sense to select all text in the fact block when we gain focus,
+            // It makes sense to select all text in the fact block when we gain focus,
             // so the user can type right away to replace the content
-            Editor.getActiveEditor().selectAllContents();
+            // Note: don't do this if the editor is empty, it looks weird to have no cursor, but a small stripe selected instead
+            if (element.text().trim().length !== 0) {
+                MediumEditor.selectAllContents();
+            }
 
             // This aligns the toolbar with the overlay of the fact block,
             // which actually aligns it all the way to the left, while the value will

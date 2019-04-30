@@ -23,6 +23,8 @@
 @import (reference) "/assets/webjars/font-awesome/4.3.0/less/core.less";
 @import (reference) "/assets/webjars/font-awesome/4.3.0/less/mixins.less";
 
+@import (reference) "/assets/blocks/imports/commons/styles/main.less";
+
 @import (reference) "/constants/blocks/core?type=less";
 @import (reference) "/constants/blocks/imports/fact?type=less";
 
@@ -80,6 +82,12 @@ blocks-fact-entry {
           content: @fa-var-check;
         }
       }
+    }
+
+    .@{INPUT_TYPE_EDITOR} {
+        &.@{COMMONS_EMPTY_CLASS} {
+          .blocks-empty-text-placeholder();
+        }
     }
 
     .@{INPUT_TYPE_COLOR_VALUE_CLASS} {
