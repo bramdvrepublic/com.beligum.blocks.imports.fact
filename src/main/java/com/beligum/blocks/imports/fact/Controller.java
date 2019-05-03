@@ -41,7 +41,7 @@ import java.util.*;
 
 import static com.beligum.blocks.templating.blocks.HtmlParser.RDF_CONTENT_ATTR;
 import static com.beligum.blocks.templating.blocks.HtmlParser.RDF_RESOURCE_ATTR;
-import static gen.com.beligum.blocks.core.constants.blocks.core.INPUT_TYPE_TIME_GMT_ATTR;
+import static gen.com.beligum.blocks.core.constants.blocks.core.WIDGET_TYPE_TIME_GMT_ATTR;
 import static java.time.ZoneOffset.UTC;
 
 /**
@@ -160,7 +160,7 @@ public class Controller extends DefaultTemplateController
                                 //note that the value is always stored in UTC zone (so the zone of this ZonedDateTime below should always be UTC)
                                 TemporalAccessor value = DateTimeFormatter.ISO_DATE_TIME.parse(content);
                                 //this flag only controls how the value above is rendered out to the html, not how it's stored
-                                ZoneId zone = RdfTools.parseRdfaBoolean(propertyEl.getAttributeValue(INPUT_TYPE_TIME_GMT_ATTR)) ? UTC : ZoneId.systemDefault();
+                                ZoneId zone = RdfTools.parseRdfaBoolean(propertyEl.getAttributeValue(WIDGET_TYPE_TIME_GMT_ATTR)) ? UTC : ZoneId.systemDefault();
 
                                 switch (rdfProperty.getWidgetType()) {
                                     case Date:

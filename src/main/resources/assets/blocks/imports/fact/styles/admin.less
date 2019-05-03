@@ -25,11 +25,11 @@
 .@{PAGE_SIDEBAR_CLASS} {
 
   //wrapper for an entry in a panel in the sidebar
-  .@{INPUT_TYPE_WRAPPER_CLASS} {
+  .@{WIDGET_TYPE_WRAPPER_CLASS} {
     .clearfix;
 
     //a number spinner should be on the same line and rather small
-    &.@{INPUT_TYPE_NUMBER} {
+    &.@{WIDGET_TYPE_NUMBER} {
 
       .input-group {
         width: auto !important;
@@ -42,7 +42,7 @@
     }
 
     //date and time are small enough to fit on the same line
-    &.@{INPUT_TYPE_DATE} {
+    &.@{WIDGET_TYPE_DATE} {
       .input-group {
         width: auto !important;
         .pull-right();
@@ -53,7 +53,7 @@
         }
       }
     }
-    &.@{INPUT_TYPE_TIME} {
+    &.@{WIDGET_TYPE_TIME} {
       .input-group {
         width: auto !important;
         .pull-right();
@@ -64,7 +64,7 @@
         }
       }
     }
-    &.@{INPUT_TYPE_DATETIME} {
+    &.@{WIDGET_TYPE_DATETIME} {
       .input-group {
         width: auto !important;
         .pull-right();
@@ -76,7 +76,7 @@
       }
     }
 
-    &.@{INPUT_TYPE_COLOR} {
+    &.@{WIDGET_TYPE_COLOR} {
       .input-group {
         width: auto !important;
         .pull-right();
@@ -89,7 +89,7 @@
       }
     }
 
-    &.@{INPUT_TYPE_RESOURCE} {
+    &.@{WIDGET_TYPE_RESOURCE} {
       //typeahead menu wrapper
       .tt-menu {
 
@@ -106,18 +106,18 @@
             overflow-x: hidden;
             margin-right: 10px;
 
-            &.@{INPUT_TYPE_RES_SUG_TITLE_CLASS} {
+            &.@{WIDGET_TYPE_RES_SUG_TITLE_CLASS} {
               font-weight: bold;
               margin: 0;
             }
-            &.@{INPUT_TYPE_RES_SUG_SUBTITLE_CLASS} {
+            &.@{WIDGET_TYPE_RES_SUG_SUBTITLE_CLASS} {
               font-size: 0.8em;
               margin: 0;
             }
           }
 
-          &.@{INPUT_TYPE_RES_SUG_EMPTY_CLASS} {
-            p.@{INPUT_TYPE_RES_SUG_TITLE_CLASS} {
+          &.@{WIDGET_TYPE_RES_SUG_EMPTY_CLASS} {
+            p.@{WIDGET_TYPE_RES_SUG_TITLE_CLASS} {
               font-weight: normal;
               font-style: italic;
             }

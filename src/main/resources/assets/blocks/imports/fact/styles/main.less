@@ -65,12 +65,12 @@ blocks-fact-entry {
       margin-bottom: 0;
     }
 
-    .@{INPUT_TYPE_BOOLEAN} {
-      .@{INPUT_TYPE_BOOLEAN_VALUE_CLASS} {
+    .@{WIDGET_TYPE_BOOLEAN} {
+      .@{WIDGET_TYPE_BOOLEAN_VALUE_CLASS} {
         .fa-icon();
       }
       &[content='false'] {
-        .@{INPUT_TYPE_BOOLEAN_VALUE_CLASS}:before {
+        .@{WIDGET_TYPE_BOOLEAN_VALUE_CLASS}:before {
           //content: @fa-var-times;
           //content: @fa-var-minus;
           //content: '-';//dash
@@ -78,31 +78,32 @@ blocks-fact-entry {
         }
       }
       &[content='true'] {
-        .@{INPUT_TYPE_BOOLEAN_VALUE_CLASS}:before {
+        .@{WIDGET_TYPE_BOOLEAN_VALUE_CLASS}:before {
           content: @fa-var-check;
         }
       }
     }
 
-    .@{INPUT_TYPE_EDITOR} {
+    .@{WIDGET_TYPE_EDITOR},
+    .@{WIDGET_TYPE_INLINE_EDITOR} {
         &.@{COMMONS_EMPTY_CLASS} {
           .blocks-empty-text-placeholder();
         }
     }
 
-    .@{INPUT_TYPE_COLOR_VALUE_CLASS} {
+    .@{WIDGET_TYPE_COLOR_VALUE_CLASS} {
       width: 12px;
       height: 12px;
       border: 1px solid #F0F0F0;
       line-height: 100%;
       margin: 5px auto 5px 0;
     }
-    .@{INPUT_TYPE_TIME_TZONE_CLASS} {
+    .@{WIDGET_TYPE_TIME_TZONE_CLASS} {
       font-size: 0.8em;
       padding-left: 0.5em;
     }
 
-    .@{INPUT_TYPE_RESOURCE} {
+    .@{WIDGET_TYPE_RESOURCE} {
       a {
         //make sure the contents of the link is fully wrapped by this container
         display: inline-block;
@@ -114,7 +115,7 @@ blocks-fact-entry {
       }
     }
 
-    .@{INPUT_TYPE_OBJECT} {
+    .@{WIDGET_TYPE_OBJECT} {
       & > .@{FACT_ENTRY_MAINPROP_CLASS} {
         //hide the label of the main property (the label of the object acts as the label)
         label {
