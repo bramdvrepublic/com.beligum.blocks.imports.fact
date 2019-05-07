@@ -17,7 +17,7 @@
 /**
  * Created by bram on 25/02/16.
  */
-base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Block", "base.core.Commons", "blocks.core.Sidebar", "blocks.core.Broadcaster", "blocks.core.UI", "messages.base.core", "constants.blocks.core", "messages.blocks.core", "constants.blocks.imports.fact", "messages.blocks.imports.fact", "constants.blocks.imports.text", "blocks.core.Notification", "blocks.core.MediumEditor", function (Class, Block, Commons, Sidebar, Broadcaster, UI, BaseMessages, BlocksConstants, BlocksMessages, FactConstants, FactMessages, TextConstants, Notification, MediumEditor)
+base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Block", "base.core.Commons", "blocks.core.Sidebar", "blocks.core.Broadcaster", "blocks.core.UI", "messages.base.core", "constants.blocks.core", "messages.blocks.core", "constants.blocks.imports.commons", "constants.blocks.imports.fact", "messages.blocks.imports.fact", "constants.blocks.imports.text", "blocks.core.Notification", "blocks.core.MediumEditor", function (Class, Block, Commons, Sidebar, Broadcaster, UI, BaseMessages, BlocksConstants, BlocksMessages, ImportsConstants, FactConstants, FactMessages, TextConstants, Notification, MediumEditor)
 {
     var BlocksFactEntry = this;
     this.TAGS = ["blocks-fact-entry"];
@@ -284,6 +284,12 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             };
 
             if (newValueTerm.widgetType) {
+
+                // If we switch from an editor widget to a non-editor, we need to destroy the editor manually, because there's no blur() call
+                if (newValueTerm.widgetType !== BlocksConstants.WIDGET_TYPE_EDITOR && newValueTerm.widgetType !== BlocksConstants.WIDGET_TYPE_INLINE_EDITOR) {
+                    MediumEditor.removeEditor(propElement);
+                }
+
                 switch (newValueTerm.widgetType) {
                     case BlocksConstants.WIDGET_TYPE_EDITOR:
 
@@ -302,11 +308,12 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                         break;
                     case BlocksConstants.WIDGET_TYPE_NUMBER:
 
-                        retVal.element = _this._createInputWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, FactMessages.numberEntryDefaultValue, null,
+                        // regarding the default value: note that a non-empty value triggers the creation of a div sub-element in the property, so make sure to init to empty when dealing with sub-objects in the sidebar
+                        retVal.element = _this._createInputWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, inSidebar ? '' : FactMessages.numberEntryDefaultValue, null,
                             'number', FactMessages.numberEntryLabel,
                             function setterFunction(propElement, placeholder, newValue)
                             {
-                                if (newValue && newValue != '') {
+                                if (newValue && newValue !== '') {
                                     propElement.attr(CONTENT_ATTR, newValue);
                                     propElement.html(newValue);
                                 }
@@ -315,6 +322,8 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                                     propElement.attr(CONTENT_ATTR, '');
                                     propElement.html(placeholder);
                                 }
+
+                                UI.refresh();
                             },
                             null,
                             null);
@@ -416,114 +425,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
 
                     case BlocksConstants.WIDGET_TYPE_OBJECT:
 
-                        var objDatatypeCurie = newValueTerm.dataType[TERM_NAME_FIELD];
-
-                        //let's create a little group for the config widgets of this object
-                        var objConfigContainer = $('<div class="' + BlocksConstants.PANEL_GROUP_CLASS + '"></div>');
-                        objConfigContainer.append($('<div class="title">' + newValueTerm[TERM_LABEL_FIELD] + '</div>'));
-
-                        retVal.element = objConfigContainer;
-
-                        // Here, we need to decide if this call is about 1) a newly added fact, or 2) an existing one.
-                        // If we're dealing with an existing one: we need to decide if 2a) the server-side data model has changed or 2b) it's still the same
-                        // and if it did change, what we should do about it. So before we make a round trip to the server, we should decide what state we're in.
-                        // Our approach is to only create sub-properties that contain valid information and leave out the rest (just like a regular fact entry on a page)
-                        // This means the html for the sub-property is only created when the user configures it's widget in the sidebar.
-                        //
-                        // Different states:
-                        //
-                        // 1) this one is easy and easily detected; the above code has filtered out simple re-focus calls,
-                        //    so we can assume new fact blocks always come in the same form.
-                        //    Since our approach is to only create html for all sub-properties that contain information
-                        //    and we assume objects without sub-properties are pointless, we can simple count the sub-property-elements:
-                        //    if there are none, we need to (re)fetch the data model from the server.
-                        // 2) this situation is more complex: we have detected presence of some parts of the objects model in the DOM.
-                        //    But before we can continue, we want to take time and check if the existing model still matches with the model
-                        //    on the server and after that, read in the existing property values into the config controls in the sidebar if needed.
-                        // 2a)
-                        // 2b)
-
-                        //wipe the element if all children are merely text nodes (note that .children() doesn't count simple text children)
-                        if (propElement.children().length == 0) {
-                            _this._resetObjectPropElement(_this, propElement);
-                        }
-
-                        //ask the server to list all the terms of this property's object data type
-                        $.getJSON(BlocksConstants.RDF_PROPERTIES_ENDPOINT + "?" + BlocksConstants.RDF_RES_TYPE_CURIE_PARAM + "=" + objDatatypeCurie)
-                            .done(function (allPropertiesData)
-                            {
-                                //2nd call to server to fetch the main property
-                                $.getJSON(BlocksConstants.RDF_MAIN_PROPERTY_ENDPOINT + "?" + BlocksConstants.RDF_RES_TYPE_CURIE_PARAM + "=" + objDatatypeCurie)
-                                    .done(function (mainPropertyData)
-                                    {
-                                        var objRefs = {};
-
-                                        $.each(allPropertiesData, function (idx, entry)
-                                        {
-                                            var curie = entry[TERM_NAME_FIELD];
-                                            var ref = objRefs[curie];
-                                            if (!ref) {
-                                                ref = [entry];
-                                                objRefs[curie] = ref;
-                                            }
-                                            else {
-                                                ref.push(entry);
-                                            }
-
-                                            var isMainProperty = mainPropertyData ? mainPropertyData[TERM_NAME_FIELD] === curie : false;
-                                            var objContainer;
-                                            var objLabel;
-                                            var objProp;
-                                            var inSidebar = true;
-                                            var skipHtmlChange;
-
-                                            var existingObjProp = propElement.find('[' + PROPERTY_ATTR + '="' + curie + '"]').eq(ref.length - 1);
-                                            if (existingObjProp.length) {
-                                                objContainer = existingObjProp.parent();
-                                                objLabel = objContainer.find('label');
-                                                objProp = existingObjProp;
-
-                                                skipHtmlChange = true;
-                                            }
-                                            else {
-                                                //Note: we don't add the element by default, but only if it received some good value
-                                                objContainer = $('<div />');
-
-                                                objLabel = $('<label/>')
-                                                    .appendTo(objContainer);
-
-                                                objProp = $('<div/>')
-                                                    .appendTo(objContainer);
-
-                                                skipHtmlChange = false;
-                                            }
-
-                                            //for sorting (see below)
-                                            objContainer
-                                            //idx is zero-based, but zero is reserved for the main property
-                                                .data(OBJ_INDEX_DATA_KEY, isMainProperty ? 0 : idx + 1)
-                                                .data(OBJ_MAINPROP_DATA_KEY, isMainProperty);
-
-                                            //let's reuse the key to add some extra metadata to the entry
-                                            entry[OBJ_MAINPROP_DATA_KEY] = isMainProperty;
-                                            if (isMainProperty) {
-                                                //styling is done in css
-                                                objContainer.addClass(FactConstants.FACT_ENTRY_MAINPROP_CLASS);
-                                            }
-
-                                            _this._updatePropertyElement(_this, inSidebar, skipHtmlChange, objLabel, objProp, propElement, entry, objConfigContainer);
-
-                                        });
-                                    })
-                                    .fail(function (xhr, textStatus, exception)
-                                    {
-                                        Notification.error(BlocksMessages.generalServerDataError + (exception ? "; " + exception : ""), xhr);
-                                    });
-                            })
-                            .fail(function (xhr, textStatus, exception)
-                            {
-                                Notification.error(BlocksMessages.generalServerDataError + (exception ? "; " + exception : ""), xhr);
-                            });
+                        retVal.element = _this._createObjectWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, '');
 
                         break;
 
@@ -581,6 +483,8 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                         else {
                             propElement.html('');
                         }
+
+                        UI.refresh();
                     },
                     _this._buildSidebarObjectLabel(valueTerm),
                     //Note we don't pass the placeholder because it looks like double info
@@ -639,6 +543,8 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                         _this._checkBasicCreateDestroy(_this, propElement, propParentElement, val);
 
                         propElement.html(val);
+
+                        UI.refresh();
                     },
                     _this._buildSidebarObjectLabel(valueTerm),
                     //Note we don't pass the placeholder because it looks like double info in the sidebar
@@ -677,7 +583,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             // In the sidebar, we enable 'disabled' mode, so the html of the fact is only updated when there's interaction
             // with the boolean widget. In normal mode, the interaction is already done (we added the fact), and we default
             // to false, the any previous html (when we switched property type) is wiped and rebuilt.
-            var defaultValue = inSidebar ? undefined : CONTENT_VALUE_FALSE;
+            var defaultValue = inSidebar ? undefined : false;
 
             // Note: this function accepts true boolean values, not a string
             var toggleState = function (newState)
@@ -696,6 +602,10 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
 
                 // Note: we just create a dummy inner <i>, rest is done in CSS, based on the content attribute
                 propElement.html('<div class="' + BlocksConstants.WIDGET_TYPE_BOOLEAN_VALUE_CLASS + '" />');
+
+                // this is needed when we're in the sidebar (setting a value creates an extra div),
+                // but doing it always doesn't hurt.
+                UI.refresh();
             };
 
             // In the sidebar, we enable 'disabled' mode, so the html of the fact is only updated when there's interaction
@@ -705,8 +615,8 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             var retVal = this.createToggleButton(inSidebar ? _this._buildSidebarObjectLabel(valueTerm) : FactMessages.booleanEntryLabel,
                 function initStateCallback()
                 {
-                    //supports returning undefined to activate disabled state
-                    var retVal = propElement.hasAttribute(CONTENT_ATTR) ? propElement.attr(CONTENT_ATTR) === CONTENT_VALUE_TRUE : defaultValue === CONTENT_VALUE_TRUE;
+                    // Note: returning undefined activates disabled state
+                    var retVal = propElement.hasAttribute(CONTENT_ATTR) ? propElement.attr(CONTENT_ATTR) === CONTENT_VALUE_TRUE : defaultValue;
 
                     if (inSidebar) {
                         _this._initializeOldVal(propElement, retVal);
@@ -725,7 +635,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
 
             //note: don't fire the change listener if we're in the sidebar, because of the startDisabled flag and the way we're hiding the propElements of empty properties
             if (!skipHtmlChange && !inSidebar) {
-                toggleState(defaultValue === CONTENT_VALUE_TRUE);
+                toggleState(defaultValue);
             }
 
             return retVal;
@@ -751,12 +661,15 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                     _this._checkBasicCreateDestroy(_this, propElement, propParentElement, newValue);
                 }
                 setterFunction(propElement, inSidebar ? null : placeholder, newValue);
+
+                // this is needed when we're in the sidebar (setting a value creates an extra div),
+                // but doing it always doesn't hurt.
+                UI.refresh();
             };
             input.on("change keyup focus", function (event)
             {
                 updateCallback(propElement, placeholder, input.val());
             });
-
 
             var firstValue = propElement.attr(CONTENT_ATTR);
 
@@ -825,6 +738,10 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                         _this._checkBasicCreateDestroy(_this, propElement, propParentElement, undefined);
                     }
                 }
+
+                // this is needed when we're in the sidebar (setting a value creates an extra div),
+                // but doing it always doesn't hurt.
+                UI.refresh();
             };
 
             var endpoint = valueTerm.widgetConfig[BlocksConstants.WIDGET_CONFIG_ENUM_ENDPOINT];
@@ -926,7 +843,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
 
             var placeholder = enableCombobox ? FactMessages.resourceEntryComboboxPlaceholder : FactMessages.resourceEntryDefaultValue;
 
-            var setterFunction = function(propElement, newValue)
+            var setterFunction = function (propElement, newValue)
             {
                 if (inSidebar) {
                     _this._checkBasicCreateDestroy(_this, propElement, propParentElement, newValue);
@@ -1027,6 +944,124 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                         setterFunction);
                 }
             }
+
+            return retVal;
+        },
+        _createObjectWidget: function (_this, inSidebar, propElement, propParentElement, valueTerm, skipHtmlChange, defaultValue)
+        {
+            var objDatatypeCurie = valueTerm.dataType[TERM_NAME_FIELD];
+
+            //let's create a little group for the config widgets of this object
+            var retVal = $('<div class="' + BlocksConstants.PANEL_GROUP_CLASS + '"></div>');
+            retVal.append($('<div class="title">' + valueTerm[TERM_LABEL_FIELD] + '</div>'));
+
+            // Here, we need to decide if this call is about 1) a newly added fact, or 2) an existing one.
+            // If we're dealing with an existing one: we need to decide if 2a) the server-side data model has changed or 2b) it's still the same
+            // and if it did change, what we should do about it. So before we make a round trip to the server, we should decide what state we're in.
+            // Our approach is to only create sub-properties that contain valid information and leave out the rest (in contrast to a regular fact entry on a page, that by default contains an empty value)
+            // This means the html for the sub-property is only created when the user configures it's widget in the sidebar.
+            //
+            // Different states:
+            //
+            // 1) this one is easy and easily detected; the above code has filtered out simple re-focus calls,
+            //    so we can assume new fact blocks always come in the same form.
+            //    Since our approach is to only create html for all sub-properties that contain information
+            //    and we assume objects without sub-properties are pointless, we can simple count the sub-property-elements:
+            //    if there are none, we need to (re)fetch the data model from the server.
+            // 2) this situation is more complex: we have detected presence of some parts of the objects model in the DOM.
+            //    But before we can continue, we want to take time and check if the existing model still matches with the model
+            //    on the server and after that, read in the existing property values into the config controls in the sidebar if needed.
+
+            //wipe the element if all children are merely text nodes (note that .children() doesn't count simple text children)
+            if (propElement.children().length === 0) {
+                _this._resetObjectPropElement(_this, propElement);
+            }
+
+            var endpointConfig = {};
+            endpointConfig[BlocksConstants.RDF_RES_TYPE_CURIE_PARAM] = objDatatypeCurie;
+
+            //ask the server to list all the terms of this property's object data type
+            $.getJSON(BlocksConstants.RDF_PROPERTIES_ENDPOINT, endpointConfig)
+                .done(function (allPropertiesData)
+                {
+                    //2nd call to server to fetch the main property
+                    $.getJSON(BlocksConstants.RDF_MAIN_PROPERTY_ENDPOINT, endpointConfig)
+                        .done(function (mainPropertyData)
+                        {
+                            var objRefs = {};
+
+                            $.each(allPropertiesData, function (idx, entry)
+                            {
+                                var curie = entry[TERM_NAME_FIELD];
+                                var ref = objRefs[curie];
+                                if (!ref) {
+                                    ref = [entry];
+                                    objRefs[curie] = ref;
+                                }
+                                else {
+                                    ref.push(entry);
+                                }
+
+                                var isMainProperty = mainPropertyData ? mainPropertyData[TERM_NAME_FIELD] === curie : false;
+                                var objContainer;
+                                var objLabel;
+                                var objProp;
+                                var inSidebar = true;
+                                var skipHtmlChange;
+
+                                var existingObjProp = propElement.find('[' + PROPERTY_ATTR + '="' + curie + '"]').eq(ref.length - 1);
+                                if (existingObjProp.length) {
+                                    objContainer = existingObjProp.parent();
+                                    objLabel = objContainer.find('label');
+                                    objProp = existingObjProp;
+
+                                    skipHtmlChange = true;
+                                }
+                                else {
+                                    //Note: we don't add the element by default, but only if it received some good value
+                                    objContainer = $('<div />');
+
+                                    objLabel = $('<label/>')
+                                        .appendTo(objContainer);
+
+                                    objProp = $('<div/>')
+                                        .appendTo(objContainer);
+
+                                    skipHtmlChange = false;
+                                }
+
+                                //for sorting (see below)
+                                objContainer
+                                //idx is zero-based, but zero is reserved for the main property
+                                    .data(OBJ_INDEX_DATA_KEY, isMainProperty ? 0 : idx + 1)
+                                    .data(OBJ_MAINPROP_DATA_KEY, isMainProperty);
+
+                                //let's reuse the key to add some extra metadata to the entry
+                                entry[OBJ_MAINPROP_DATA_KEY] = isMainProperty;
+                                if (isMainProperty) {
+                                    //styling is done in css
+                                    objContainer.addClass(FactConstants.FACT_ENTRY_MAINPROP_CLASS);
+                                }
+
+                                // we don't allow sub-objects because of possible infinite recursion (and untested UI support)
+                                if (entry.widgetType !== BlocksConstants.WIDGET_TYPE_OBJECT) {
+                                    _this._updatePropertyElement(_this, inSidebar, skipHtmlChange, objLabel, objProp, propElement, entry, retVal);
+                                }
+                                else {
+                                    Logger.warn("Skipping recursive call of sub-object in object to avoid infinite recursion", entry);
+                                }
+
+                            });
+                        })
+                        .fail(function (xhr, textStatus, exception)
+                        {
+                            Notification.error(BlocksMessages.generalServerDataError + (exception ? "; " + exception : ""), xhr);
+                        });
+                })
+                .fail(function (xhr, textStatus, exception)
+                {
+                    Notification.error(BlocksMessages.generalServerDataError + (exception ? "; " + exception : ""), xhr);
+                });
 
             return retVal;
         },
@@ -1237,6 +1272,8 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
          */
         _createObjectPropElement: function (_this, propElement, propParentElement)
         {
+            propParentElement.removeClass(ImportsConstants.COMMONS_EMPTY_CLASS);
+
             //remove all (help) text elements from the parent
             propParentElement.contents().filter(function ()
             {
@@ -1249,7 +1286,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 propElementRoot = propElementRoot.parent();
             }
 
-            //second check: if the loop went up all the way to the document for some reason, there's probably something wrong...
+            //second failsafe check: if the loop went up all the way to the document for some reason, there's probably something wrong...
             if (propElementRoot.length && !propElementRoot.is(document)) {
 
                 //detach all children, reorder them based on the data-index attribute and reattach them (with the new one included)
@@ -1264,14 +1301,6 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 });
 
                 propParentElement.append(allPropChildren);
-            }
-        },
-        _initializeOldVal: function (propElement, val)
-        {
-            //initialize the old value store, but don't overwrite
-            //Note: this is required for come-back-and-edit to work, see _checkBasicCreateDestroy()
-            if (typeof propElement.data(OLD_VAL_DATA_KEY) === typeof undefined) {
-                propElement.data(OLD_VAL_DATA_KEY, val);
             }
         },
         /**
@@ -1298,9 +1327,21 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 _this._resetObjectPropElement(_this, propParentElement);
             }
         },
+        _initializeOldVal: function (propElement, val)
+        {
+            //initialize the old value store, but don't overwrite
+            //Note: this is required for come-back-and-edit to work, see _checkBasicCreateDestroy()
+            if (typeof propElement.data(OLD_VAL_DATA_KEY) === typeof undefined) {
+                propElement.data(OLD_VAL_DATA_KEY, val);
+            }
+        },
+        /**
+         * This wipes the html content of an object type fact element
+         */
         _resetObjectPropElement: function (_this, propElement)
         {
             propElement.empty();
+            propElement.addClass(ImportsConstants.COMMONS_EMPTY_CLASS);
             propElement.html(FactMessages.objectEntryDefaultValue);
         },
         _buildSidebarObjectLabel: function (valueTerm)

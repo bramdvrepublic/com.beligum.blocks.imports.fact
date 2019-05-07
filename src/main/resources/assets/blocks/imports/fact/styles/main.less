@@ -65,6 +65,19 @@ blocks-fact-entry {
       margin-bottom: 0;
     }
 
+    // This syncs the look of the placeholder of all other widgets
+    // with the placeholder of the editor (see .blocks-empty-text-placeholder())
+    .@{WIDGET_TYPE_ENUM}:not([content]), .@{WIDGET_TYPE_ENUM}[content=''],
+    .@{WIDGET_TYPE_COLOR}:not([content]), .@{WIDGET_TYPE_COLOR}[content=''],
+    .@{WIDGET_TYPE_DATE}:not([content]), .@{WIDGET_TYPE_DATE}[content=''],
+    .@{WIDGET_TYPE_TIME}:not([content]), .@{WIDGET_TYPE_TIME}[content=''],
+    .@{WIDGET_TYPE_NUMBER}:not([content]), .@{WIDGET_TYPE_NUMBER}[content=''],
+    .@{WIDGET_TYPE_URI}:not([resource]), .@{WIDGET_TYPE_URI}[resource=''],
+    .@{WIDGET_TYPE_RESOURCE}:not([resource]), .@{WIDGET_TYPE_RESOURCE}[resource=''],
+    .@{WIDGET_TYPE_OBJECT}.@{COMMONS_EMPTY_CLASS} {
+      .opacity(0.65);
+    }
+
     .@{WIDGET_TYPE_BOOLEAN} {
       .@{WIDGET_TYPE_BOOLEAN_VALUE_CLASS} {
         .fa-icon();
