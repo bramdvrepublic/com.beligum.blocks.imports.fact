@@ -71,10 +71,14 @@ blocks-fact-entry {
     .@{WIDGET_TYPE_COLOR}:not([content]), .@{WIDGET_TYPE_COLOR}[content=''],
     .@{WIDGET_TYPE_DATE}:not([content]), .@{WIDGET_TYPE_DATE}[content=''],
     .@{WIDGET_TYPE_TIME}:not([content]), .@{WIDGET_TYPE_TIME}[content=''],
+    .@{WIDGET_TYPE_DATETIME}:not([content]), .@{WIDGET_TYPE_DATETIME}[content=''],
+    .@{WIDGET_TYPE_DURATION}:not([content]), .@{WIDGET_TYPE_DURATION}[content=''],
     .@{WIDGET_TYPE_NUMBER}:not([content]), .@{WIDGET_TYPE_NUMBER}[content=''],
     .@{WIDGET_TYPE_URI}:not([resource]), .@{WIDGET_TYPE_URI}[resource=''],
     .@{WIDGET_TYPE_RESOURCE}:not([resource]), .@{WIDGET_TYPE_RESOURCE}[resource=''],
-    .@{WIDGET_TYPE_OBJECT}.@{COMMONS_EMPTY_CLASS} {
+    .@{WIDGET_TYPE_OBJECT}.@{COMMONS_EMPTY_CLASS},
+      // note: the selector below is when no property has been selected yet (freshly created)
+    .@{FACT_ENTRY_PROPERTY_CLASS}:not([property]), .@{FACT_ENTRY_PROPERTY_CLASS}[property=''] {
       .opacity(0.65);
     }
 

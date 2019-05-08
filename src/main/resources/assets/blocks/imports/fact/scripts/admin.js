@@ -383,6 +383,11 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                         );
 
                         break;
+                    case BlocksConstants.WIDGET_TYPE_DURATION:
+
+                        retVal.element = _this._createDurationWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, '', FactMessages.durationEntryDefaultValue);
+
+                        break;
                     case BlocksConstants.WIDGET_TYPE_COLOR:
 
                         // Note that there's also a _this.createColorInput(), but the _createInputWidget() offers us much more control over the default value etc.
@@ -709,6 +714,108 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             //if we're in the sidebar, we must initialize the old value for the create/destroy functionality to work
             if (inSidebar) {
                 _this._initializeOldVal(propElement, input.val());
+            }
+
+            return retVal;
+        },
+        _createDurationWidget: function (_this, inSidebar, propElement, propParentElement, valueTerm, skipHtmlChange, defaultValue, placeholder)
+        {
+            var id = Commons.generateId();
+            var retVal = $('<div class="' + BlocksConstants.WIDGET_TYPE_WRAPPER_CLASS + '"></div>');
+            retVal.addClass(valueTerm.widgetType);
+            var labelText = FactMessages.durationEntryLabel;
+            if (labelText || inSidebar) {
+                if (inSidebar) {
+                    labelText = _this._buildSidebarObjectLabel(valueTerm);
+                }
+                var label = ($('<label for="' + id + '">' + labelText + '</label>')).appendTo(retVal);
+            }
+            var inputGroup = $('<div class="input-group"></div>').appendTo(retVal);
+
+            var updateCallback = function (propElement, placeholder, newValue)
+            {
+                if (inSidebar) {
+                    _this._checkBasicCreateDestroy(_this, propElement, propParentElement, newValue);
+                }
+
+                if (newValue && newValue !== '') {
+                    // Note: this means the true value of a duration is the number of seconds
+                    propElement.attr(CONTENT_ATTR, newValue);
+
+                    //var val = moment.utc(newValue * 1000).format('HH:mm:ss');
+                    // see https://momentjs.com/docs/#/durations/
+                    var duration = moment.duration(parseInt(newValue), 'seconds');
+
+                    var val = '';
+                    if (duration.days() > 0) {
+                        val += (val === '' ? '' : ', ') + duration.days() + ' ' + (duration.days() === 1 ? FactMessages.durationEntryDayLabel : FactMessages.durationEntryDaysLabel);
+                    }
+                    if (duration.hours() > 0) {
+                        val += (val === '' ? '' : ', ') + duration.hours() + ' ' + (duration.hours() === 1 ? FactMessages.durationEntryHourLabel : FactMessages.durationEntryHoursLabel);
+                    }
+                    if (duration.minutes() > 0) {
+                        val += (val === '' ? '' : ', ') + duration.minutes() + ' ' + (duration.minutes() === 1 ? FactMessages.durationEntryMinuteLabel : FactMessages.durationEntryMinutesLabel);
+                    }
+                    // note: we always at least set the seconds
+                    if (duration.seconds() > 0 || val === '') {
+                        val += (val === '' ? '' : ', ') + duration.seconds() + ' ' + (duration.seconds() === 1 ? FactMessages.durationEntrySecondLabel : FactMessages.durationEntrySecondsLabel);
+                    }
+
+                    propElement.html(val);
+                }
+                else {
+                    //don't remove the attr, set it to empty (or the help text in the HTML will end up as the value)
+                    propElement.attr(CONTENT_ATTR, '');
+                    propElement.html(placeholder);
+                }
+
+                // this is needed when we're in the sidebar (setting a value creates an extra div),
+                // but doing it always doesn't hurt.
+                UI.refresh();
+            };
+
+            //the duration picker seems to attach itself to another element, setting it the display none
+            var durationHolder = $('<div/>').appendTo(inputGroup);
+            durationHolder.durationPicker({
+
+                translations: {
+                    day: FactMessages.durationEntryDaysLabel,
+                    hour: FactMessages.durationEntryHoursLabel,
+                    minute: FactMessages.durationEntryMinutesLabel,
+                    second: FactMessages.durationEntrySecondsLabel,
+                    days: FactMessages.durationEntryDaysLabel,
+                    hours: FactMessages.durationEntryHoursLabel,
+                    minutes: FactMessages.durationEntryMinutesLabel,
+                    seconds: FactMessages.durationEntrySecondsLabel,
+                },
+
+                // defines whether to show seconds or not
+                showSeconds: true,
+
+                // defines whether to show days or not
+                showDays: true,
+
+                // callback function that triggers every time duration is changed
+                //   value - duration in seconds
+                //   isInitializing - bool value
+                //                    Will be `true` when the plugin is initialized for the
+                //                    first time or when it's re-initialized by calling `setValue` method
+                onChanged: function (value, isInitializing)
+                {
+                    //don't call it while initializing, otherwise it will always reset to 0 on focus
+                    if (!isInitializing) {
+                        updateCallback(propElement, placeholder, value);
+                    }
+                }
+            });
+
+            var firstValue = propElement.attr(CONTENT_ATTR);
+            //if the html widget is uninitialized, try to set it to a default value
+            if (Commons.isUnset(firstValue) || firstValue === placeholder) {
+                updateCallback(propElement, placeholder, null);
+            }
+            else {
+                durationHolder.data('durationPicker').setValue(parseInt(firstValue));
             }
 
             return retVal;

@@ -76,6 +76,19 @@
       }
     }
 
+    &.@{WIDGET_TYPE_DURATION} {
+      .input-group {
+        width: auto !important;
+        .pull-right();
+
+        input {
+          max-width: 60px;
+          // a little more margin with the labels
+          margin-bottom: 5px;
+        }
+      }
+    }
+
     &.@{WIDGET_TYPE_COLOR} {
       .input-group {
         width: auto !important;
