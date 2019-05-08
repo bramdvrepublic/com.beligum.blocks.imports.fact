@@ -81,10 +81,22 @@
         width: auto !important;
         .pull-right();
 
-        input {
-          max-width: 60px;
-          // a little more margin with the labels
-          margin-bottom: 5px;
+        .bdp-input {
+          // needed to position the reset btn next to it
+          display: inline-block;
+
+          input {
+            max-width: 60px;
+            // a little more margin with the labels
+            margin-bottom: 5px;
+          }
+        }
+        //sync this with the color reset btn in blocks main.less
+        .btn-reset {
+          color: #333;
+          .opacity(0.5);
+          vertical-align: top;
+          margin-top: 10px;
         }
       }
     }

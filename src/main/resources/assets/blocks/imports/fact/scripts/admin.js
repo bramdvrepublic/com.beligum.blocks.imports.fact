@@ -147,9 +147,21 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                         return;
                     }
 
-                    // don't change anything if they're both the same
-                    if (oldValueTerm && oldValueTerm[TERM_NAME_FIELD] == newValueTerm[TERM_NAME_FIELD]) {
-                        return;
+                    // if we don't have an oldValueTerm, we probably just focused the block
+                    if (oldValueTerm) {
+                        // don't change anything if they're both the same
+                        if (oldValueTerm[TERM_NAME_FIELD] === newValueTerm[TERM_NAME_FIELD]) {
+                            return;
+                        }
+                        // if they're not the same, we changed type while the fact block was focused
+                        // and we reset the content of the html to make sure we start from scratch
+                        else {
+                            propElement.removeAttr(CONTENT_ATTR);
+                            propElement.removeAttr(DATATYPE_ATTR);
+                            propElement.removeAttr(TYPEOF_ATTR);
+                            propElement.removeAttr(RESOURCE_ATTR);
+                            propElement.html('');
+                        }
                     }
 
                     //This method gets called every time the user focuses a fact entry, because the combobox is re-loaded
@@ -310,7 +322,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
 
                         // regarding the default value: note that a non-empty value triggers the creation of a div sub-element in the property, so make sure to init to empty when dealing with sub-objects in the sidebar
                         retVal.element = _this._createInputWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, inSidebar ? '' : FactMessages.numberEntryDefaultValue, null,
-                            'number', FactMessages.numberEntryLabel,
+                            'number', FactMessages.numberEntryLabel, null,
                             function setterFunction(propElement, placeholder, newValue)
                             {
                                 if (newValue && newValue !== '') {
@@ -326,13 +338,14 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                                 UI.refresh();
                             },
                             null,
-                            null);
+                            null,
+                            false);
 
                         break;
                     case BlocksConstants.WIDGET_TYPE_DATE:
 
                         retVal.element = _this._createInputWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, '', FactMessages.dateEntryDefaultValue,
-                            'date', FactMessages.dateEntryLabel,
+                            'date', FactMessages.dateEntryLabel, null,
                             function setterFunction(propElement, placeholder, newValue)
                             {
                                 //Note that we save all date values as GMT (if you need timezone functionality, use the dateTime widget)
@@ -342,13 +355,14 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                             {
                                 return _this._dateTimeWidgetSetterFilterFunction(_this, propElement, contentValue, DATE_VALUE_FORMAT, DATE_WIDGET_FORMAT, true);
                             },
-                            null);
+                            null,
+                            false);
 
                         break;
                     case BlocksConstants.WIDGET_TYPE_TIME:
 
                         retVal.element = _this._createInputWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, '', FactMessages.timeEntryDefaultValue,
-                            'time', FactMessages.timeEntryLabel,
+                            'time', FactMessages.timeEntryLabel, null,
                             function setterFunction(propElement, placeholder, newValue)
                             {
                                 return _this._dateTimeSetterFunction(_this, propElement, placeholder, newValue, DATE_TIME_ENUM_TIME, TIME_FORMAT, TIME_VALUE_FORMAT, TIMEZONE_FORMAT, false);
@@ -360,14 +374,15 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                             function extraHtmlFunction(updateCallback)
                             {
                                 return _this._dateTimeExtraHtmlFunction(_this, inSidebar, propElement, newValueTerm, updateCallback);
-                            }
+                            },
+                            false
                         );
 
                         break;
                     case BlocksConstants.WIDGET_TYPE_DATETIME:
 
                         retVal.element = _this._createInputWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, '', FactMessages.datetimeEntryDefaultValue,
-                            'datetime-local', FactMessages.dateTimeEntryLabel,
+                            'datetime-local', FactMessages.dateTimeEntryLabel, null,
                             function setterFunction(propElement, placeholder, newValue)
                             {
                                 return _this._dateTimeSetterFunction(_this, propElement, placeholder, newValue, DATE_TIME_ENUM_DATETIME, DATE_TIME_FORMAT, DATE_TIME_VALUE_FORMAT, TIMEZONE_FORMAT, false);
@@ -379,7 +394,8 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                             function extraHtmlFunction(updateCallback)
                             {
                                 return _this._dateTimeExtraHtmlFunction(_this, inSidebar, propElement, newValueTerm, updateCallback);
-                            }
+                            },
+                            false
                         );
 
                         break;
@@ -392,7 +408,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
 
                         // Note that there's also a _this.createColorInput(), but the _createInputWidget() offers us much more control over the default value etc.
                         retVal.element = _this._createInputWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, '', FactMessages.colorEntryDefaultValue,
-                            'color', FactMessages.colorEntryLabel,
+                            'color', FactMessages.colorEntryLabel, BlocksConstants.COLOR_GROUP_CLASS,
                             function setterFunction(propElement, placeholder, newValue)
                             {
                                 if (newValue && newValue !== '' && newValue !== placeholder && newValue.charAt(0) === '#') {
@@ -406,7 +422,8 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                                 }
                             },
                             null,
-                            null);
+                            null,
+                            inSidebar);
 
                         break;
 
@@ -645,7 +662,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
 
             return retVal;
         },
-        _createInputWidget: function (_this, inSidebar, propElement, propParentElement, valueTerm, skipHtmlChange, defaultValue, placeholder, htmlInputType, labelText, setterFunction, widgetSetterFilterFunction, extraHtmlFunction)
+        _createInputWidget: function (_this, inSidebar, propElement, propParentElement, valueTerm, skipHtmlChange, defaultValue, placeholder, htmlInputType, labelText, inputGroupClass, setterFunction, widgetSetterFilterFunction, extraHtmlFunction, enableResetBtn)
         {
             var id = Commons.generateId();
             var retVal = $('<div class="' + BlocksConstants.WIDGET_TYPE_WRAPPER_CLASS + '"></div>');
@@ -656,8 +673,6 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 }
                 var label = ($('<label for="' + id + '">' + labelText + '</label>')).appendTo(retVal);
             }
-            var inputGroup = $('<div class="input-group"></div>').appendTo(retVal);
-            var input = $('<input id="' + id + '" type="' + htmlInputType + '" class="form-control">').appendTo(inputGroup);
 
             //init and attach the change listener
             var updateCallback = function (propElement, placeholder, newValue)
@@ -671,6 +686,29 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 // but doing it always doesn't hurt.
                 UI.refresh();
             };
+
+            var inputGroup = $('<div/>').appendTo(retVal);
+
+            if (inputGroupClass) {
+                inputGroup.addClass(inputGroupClass);
+            }
+            else {
+                inputGroup.addClass("input-group");
+            }
+
+            if (enableResetBtn) {
+                var reset = $('<a href="javascript:void(0);" class="btn btn-link btn-xs btn-reset"><i class="fa fa-trash-o"></a>').appendTo(inputGroup);
+                reset.click(function (e)
+                {
+                    // this one is used to reset the input box
+                    input.val(defaultValue).change();
+                    // this one is used to make sure the callback is called correctly in case of the color (which always reverts to #000000)
+                    updateCallback(propElement, placeholder, defaultValue);
+                });
+            }
+
+            var input = $('<input id="' + id + '" type="' + htmlInputType + '" class="form-control">').appendTo(inputGroup);
+
             input.on("change keyup focus", function (event)
             {
                 updateCallback(propElement, placeholder, input.val());
@@ -730,7 +768,6 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 }
                 var label = ($('<label for="' + id + '">' + labelText + '</label>')).appendTo(retVal);
             }
-            var inputGroup = $('<div class="input-group"></div>').appendTo(retVal);
 
             var updateCallback = function (propElement, placeholder, newValue)
             {
@@ -739,12 +776,15 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 }
 
                 if (newValue && newValue !== '') {
-                    // Note: this means the true value of a duration is the number of seconds
-                    propElement.attr(CONTENT_ATTR, newValue);
+                    //Note: the duration picker returns seconds
+                    var millis = parseInt(newValue) * 1000;
+
+                    // Note: this means the true value of a duration is the number of milliseconds
+                    propElement.attr(CONTENT_ATTR, millis);
 
                     //var val = moment.utc(newValue * 1000).format('HH:mm:ss');
                     // see https://momentjs.com/docs/#/durations/
-                    var duration = moment.duration(parseInt(newValue), 'seconds');
+                    var duration = moment.duration(millis);
 
                     var val = '';
                     if (duration.days() > 0) {
@@ -773,6 +813,19 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 // but doing it always doesn't hurt.
                 UI.refresh();
             };
+
+            var inputGroup = $('<div class="input-group"></div>').appendTo(retVal);
+
+            if (inSidebar) {
+                var reset = $('<a href="javascript:void(0);" class="btn btn-link btn-xs btn-reset"><i class="fa fa-trash-o"></a>').appendTo(inputGroup);
+                reset.click(function (e)
+                {
+                    // this one resets the widget
+                    durationHolder.data('durationPicker').setValue(defaultValue);
+                    // this one resets the html
+                    updateCallback(propElement, placeholder, null);
+                });
+            }
 
             //the duration picker seems to attach itself to another element, setting it the display none
             var durationHolder = $('<div/>').appendTo(inputGroup);
@@ -815,7 +868,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 updateCallback(propElement, placeholder, null);
             }
             else {
-                durationHolder.data('durationPicker').setValue(parseInt(firstValue));
+                durationHolder.data('durationPicker').setValue(parseInt(firstValue) / 1000);
             }
 
             return retVal;
@@ -948,7 +1001,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             // Note: this means default is false
             var enableCombobox = valueTerm.widgetConfig[BlocksConstants.WIDGET_CONFIG_RESOURCE_ENABLE_COMBOBOX] === 'true';
 
-            var placeholder = enableCombobox ? FactMessages.resourceEntryComboboxPlaceholder : FactMessages.resourceEntryDefaultValue;
+            var placeholder = enableCombobox ? FactMessages.resourceEntryComboboxPlaceholder : FactMessages.resourceEntryPlaceholder;
 
             var setterFunction = function (propElement, newValue)
             {
@@ -956,7 +1009,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                     _this._checkBasicCreateDestroy(_this, propElement, propParentElement, newValue);
                 }
 
-                if (newValue && newValue.label != '') {
+                if (newValue && newValue.label !== '') {
 
                     // The real value of the property is the remote resource id
                     //  A nice illustration of this use is here: https://www.w3.org/TR/rdfa-syntax/#inheriting-subject-from-resource
