@@ -522,8 +522,10 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                     // so set a timeout
                     setTimeout(function ()
                     {
-                        // note: use this instead of html('') so it triggers the editableInput event
-                        MediumEditor.getActiveEditor().setContent('');
+                        // note: use this instead of html('') so it triggers the editableInput event,
+                        //       but note it won't trigger anything if the content didn't change, so make sure
+                        //       it's different from the default content (eg. don't use setContent('') ...)
+                        MediumEditor.getActiveEditor().setContent(' ');
                     }, 100);
 
                     // This basically "re-focuses" the block and is needed because the registered selector of admin-text.js

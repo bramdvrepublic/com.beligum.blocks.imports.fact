@@ -21,11 +21,14 @@ base.plugin("blocks.imports.FactEntryText", ["base.core.Class", "blocks.imports.
 {
     var BlocksFactEntryText = this;
     this.TAGS = [
-        //Note: we don't allow the user to edit the label of the property (but it works)
-        //"blocks-fact-entry ."+BlocksConstants.FACT_ENTRY_NAME_CLASS,
-        //Note: by adding the ">", we don't activate the editor for the editor widgets of object sub-properties (those are edited via the sidebar)
-        "blocks-fact-entry [data-property=" + FactConstants.FACT_ENTRY_VALUE_PROPERTY + "] > ." + BlocksConstants.WIDGET_TYPE_EDITOR,
-        "blocks-fact-entry [data-property=" + FactConstants.FACT_ENTRY_VALUE_PROPERTY + "] > ." + BlocksConstants.WIDGET_TYPE_INLINE_EDITOR
+        // Note: we don't allow the user to edit the label of the property (but it works)
+        // "blocks-fact-entry ."+BlocksConstants.FACT_ENTRY_NAME_CLASS,
+
+        // Instead of registering the editor property (which is messy because it's a property in a data-property),
+        // we register the general outer property and initialize the editor selectively in the focus() callback below
+        // "blocks-fact-entry [data-property=" + FactConstants.FACT_ENTRY_VALUE_PROPERTY + "] > ." + BlocksConstants.WIDGET_TYPE_EDITOR,
+        // "blocks-fact-entry [data-property=" + FactConstants.FACT_ENTRY_VALUE_PROPERTY + "] > ." + BlocksConstants.WIDGET_TYPE_INLINE_EDITOR
+        "blocks-fact-entry [data-property=" + FactConstants.FACT_ENTRY_VALUE_PROPERTY + "]"
     ];
 
     (this.Class = Class.create(Text.Class, {
@@ -41,27 +44,40 @@ base.plugin("blocks.imports.FactEntryText", ["base.core.Class", "blocks.imports.
         //-----IMPLEMENTED METHODS-----
         focus: function (block, element, hotspot, event)
         {
-            var retVal = BlocksFactEntryText.Class.Super.prototype.focus.call(this, block, element, hotspot, event);
+            //Note: by adding the ">", we don't activate the editor for the editor widgets of object sub-properties (those are edited via the sidebar)
+            var editorEl = element.find(
+                ' > .' + BlocksConstants.WIDGET_TYPE_EDITOR + ',' +
+                ' > .' + BlocksConstants.WIDGET_TYPE_INLINE_EDITOR
+            );
 
-            // It makes sense to select all text in the fact block when we gain focus,
-            // so the user can type right away to replace the content
-            // Note: don't do this if the editor is empty, it looks weird to have no cursor, but a small stripe selected instead
-            if (element.text().trim().length !== 0) {
-                MediumEditor.selectAllContents();
+            if (editorEl.length > 0) {
+
+                var retVal = BlocksFactEntryText.Class.Super.prototype.focus.call(this, block, editorEl, hotspot, event);
+
+                // It makes sense to select all text in the fact block when we gain focus,
+                // so the user can type right away to replace the content
+                // Note: don't do this if the editor is empty, it looks weird to have no cursor, but a small stripe selected instead
+                if (element.text().trim().length !== 0) {
+                    MediumEditor.selectAllContents();
+                }
+                else {
+                    Logger.info('blah, empty');
+                }
+
+                // This aligns the toolbar with the overlay of the fact block,
+                // which actually aligns it all the way to the left, while the value will
+                // probably be on the right. This alters the toolbar anchor element.
+                // var editorToolbar = Editor.getActiveToolbar();
+                // editorToolbar.anchorElement = element;
+                // editorToolbar.setToolbarPosition();
+
+                return retVal;
             }
-
-            // This aligns the toolbar with the overlay of the fact block,
-            // which actually aligns it all the way to the left, while the value will
-            // probably be on the right. This alters the toolbar anchor element.
-            // var editorToolbar = Editor.getActiveToolbar();
-            // editorToolbar.anchorElement = element;
-            // editorToolbar.setToolbarPosition();
-
-            return retVal;
-        },
-        getConfigs: function (block, element)
-        {
-            return BlocksFactEntryText.Class.Super.prototype.getConfigs.call(this, block, element);
+            // actually, the superclass returns nothing at all,
+            // but we return undefined because we also return something above
+            else {
+                return undefined;
+            }
         },
 
         //-----PRIVATE METHODS-----
