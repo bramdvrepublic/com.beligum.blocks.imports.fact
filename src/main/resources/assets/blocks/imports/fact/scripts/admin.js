@@ -303,14 +303,19 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 }
 
                 switch (newValueTerm.widgetType) {
+                    case BlocksConstants.WIDGET_TYPE_IMMUTABLE:
+
+                        retVal.element = _this._createImmutableWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, '', FactMessages.immutableEntryPlaceholder);
+
+                        break;
                     case BlocksConstants.WIDGET_TYPE_EDITOR:
 
-                        retVal.element = _this._createEditorWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, FactMessages.textEntryDefaultValue, event);
+                        retVal.element = _this._createEditorWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, FactMessages.textEntryPlaceholder, event);
 
                         break;
                     case BlocksConstants.WIDGET_TYPE_INLINE_EDITOR:
 
-                        retVal.element = _this._createInlineEditorWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, FactMessages.textEntryDefaultValue, event);
+                        retVal.element = _this._createInlineEditorWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, FactMessages.textEntryPlaceholder, event);
 
                         break;
                     case BlocksConstants.WIDGET_TYPE_BOOLEAN:
@@ -344,7 +349,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                         break;
                     case BlocksConstants.WIDGET_TYPE_DATE:
 
-                        retVal.element = _this._createInputWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, '', FactMessages.dateEntryDefaultValue,
+                        retVal.element = _this._createInputWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, '', FactMessages.dateEntryPlaceholder,
                             'date', FactMessages.dateEntryLabel, null,
                             function setterFunction(propElement, placeholder, newValue)
                             {
@@ -361,7 +366,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                         break;
                     case BlocksConstants.WIDGET_TYPE_TIME:
 
-                        retVal.element = _this._createInputWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, '', FactMessages.timeEntryDefaultValue,
+                        retVal.element = _this._createInputWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, '', FactMessages.timeEntryPlaceholder,
                             'time', FactMessages.timeEntryLabel, null,
                             function setterFunction(propElement, placeholder, newValue)
                             {
@@ -381,7 +386,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                         break;
                     case BlocksConstants.WIDGET_TYPE_DATETIME:
 
-                        retVal.element = _this._createInputWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, '', FactMessages.datetimeEntryDefaultValue,
+                        retVal.element = _this._createInputWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, '', FactMessages.datetimeEntryPlaceholder,
                             'datetime-local', FactMessages.dateTimeEntryLabel, null,
                             function setterFunction(propElement, placeholder, newValue)
                             {
@@ -401,13 +406,13 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                         break;
                     case BlocksConstants.WIDGET_TYPE_DURATION:
 
-                        retVal.element = _this._createDurationWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, '', FactMessages.durationEntryDefaultValue);
+                        retVal.element = _this._createDurationWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, '', FactMessages.durationEntryPlaceholder);
 
                         break;
                     case BlocksConstants.WIDGET_TYPE_COLOR:
 
                         // Note that there's also a _this.createColorInput(), but the _createInputWidget() offers us much more control over the default value etc.
-                        retVal.element = _this._createInputWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, '', FactMessages.colorEntryDefaultValue,
+                        retVal.element = _this._createInputWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, '', FactMessages.colorEntryPlaceholder,
                             'color', FactMessages.colorEntryLabel, BlocksConstants.COLOR_GROUP_CLASS,
                             function setterFunction(propElement, placeholder, newValue)
                             {
@@ -429,7 +434,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
 
                     case BlocksConstants.WIDGET_TYPE_ENUM:
 
-                        retVal.element = _this._createEnumWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, '', FactMessages.enumEntryDefaultValue);
+                        retVal.element = _this._createEnumWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, '', FactMessages.enumEntryPlaceholder);
 
                         break;
 
@@ -471,6 +476,78 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                     }
                     else {
                         sidebarParent.after(retVal.element);
+                    }
+                }
+            }
+
+            return retVal;
+        },
+        _createImmutableWidget: function (_this, inSidebar, propElement, propParentElement, valueTerm, skipHtmlChange, defaultValue, placeholder)
+        {
+            var retVal = null;
+
+            // only initialize an immutable widget when it doesn't have a value
+            // (note that an empty value is also a value, so check for attribute presence)
+            if (!propElement.hasAttribute(CONTENT_ATTR)) {
+
+                var changeListener = function (oldValue, newValue)
+                {
+                    if (newValue) {
+
+                        propElement.html(newValue);
+                        propElement.attr(CONTENT_ATTR, newValue);
+
+                        if (inSidebar) {
+                            _this._checkBasicCreateDestroy(_this, propElement, propParentElement, newValue);
+                        }
+                    }
+                    // If the newValueTerm is undefined, the content attribute will have been erased.
+                    // However, we don't want that, because this would mean the placeholder in the html tag
+                    // would become the value of the property, so make sure to set it back explicitly.
+                    else {
+                        propElement.html(placeholder);
+                        propElement.attr(CONTENT_ATTR, defaultValue);
+
+                        if (inSidebar) {
+                            _this._checkBasicCreateDestroy(_this, propElement, propParentElement, undefined);
+                        }
+                    }
+
+                    // this is needed when we're in the sidebar (setting a value creates an extra div),
+                    // but doing it always doesn't hurt.
+                    UI.refresh();
+                };
+
+                var endpoint = valueTerm.widgetConfig[BlocksConstants.WIDGET_CONFIG_IMMUTABLE_ENDPOINT];
+                if (!endpoint) {
+                    Notification.error(Commons.format(FactMessages.missingEndpointError, valueTerm.curie));
+                }
+                else {
+
+                    //note that this shouldn always be undefined, but let's do it this way to keep track of where it's used
+                    var oldValue = propElement.attr(CONTENT_ATTR);
+
+                    // if we don't have a value (this should mean this is the first time this fact is initialized),
+                    // contact the value endpoint and use the 'resource' property of the ResourceProxy as the first value
+                    $.getJSON(endpoint)
+                        .done(function (data)
+                        {
+                            changeListener(oldValue, data.resource);
+                        })
+                        .fail(function (xhr, textStatus, exception)
+                        {
+                            Notification.error(BlocksMessages.generalServerDataError + (exception ? "; " + exception : ""), xhr);
+                        });
+
+                    //call it once in a hacky way to set the default value
+                    //Note: we don't call it if we're in the sidebar because we're hiding the propElements of empty properties
+                    if (!skipHtmlChange && !inSidebar && defaultValue != null) {
+                        changeListener(undefined, defaultValue);
+                    }
+
+                    //if we're in the sidebar, we must initialize the old value for the create/destroy functionality to work
+                    if (inSidebar) {
+                        _this._initializeOldVal(propElement, oldValue);
                     }
                 }
             }
@@ -719,7 +796,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             var firstValue = propElement.attr(CONTENT_ATTR);
 
             //if the html widget is uninitialized, try to set it to a default value
-            if (Commons.isUnset(firstValue) || firstValue === FactMessages.widgetEntryDefaultValue) {
+            if (Commons.isUnset(firstValue) || firstValue === FactMessages.widgetEntryPlaceholder) {
                 firstValue = defaultValue;
             }
 
