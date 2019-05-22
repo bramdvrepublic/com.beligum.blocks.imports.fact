@@ -28,69 +28,18 @@
   .@{WIDGET_TYPE_WRAPPER_CLASS} {
     .clearfix;
 
-    //a number spinner should be on the same line and rather small
-    &.@{WIDGET_TYPE_NUMBER} {
-
+    // these are the widgets that are small enough to fit to the right of the label
+    &.@{WIDGET_TYPE_IMMUTABLE},
+    &.@{WIDGET_TYPE_NUMBER},
+    &.@{WIDGET_TYPE_DATE},
+    &.@{WIDGET_TYPE_TIME},
+    &.@{WIDGET_TYPE_DATETIME},
+    &.@{WIDGET_TYPE_DURATION},
+    &.@{WIDGET_TYPE_COLOR} {
       .input-group {
         width: auto !important;
         .pull-right();
 
-        input {
-          max-width: 100px;
-        }
-      }
-    }
-
-    //date and time are small enough to fit on the same line
-    &.@{WIDGET_TYPE_DATE} {
-      .input-group {
-        width: auto !important;
-        .pull-right();
-
-        &,
-        & input {
-          max-width: 160px;
-        }
-      }
-    }
-    &.@{WIDGET_TYPE_TIME} {
-      .input-group {
-        width: auto !important;
-        .pull-right();
-
-        &,
-        & input {
-          max-width: 130px;
-        }
-      }
-    }
-    &.@{WIDGET_TYPE_DATETIME} {
-      .input-group {
-        width: auto !important;
-        .pull-right();
-
-        &,
-        & input {
-          max-width: 230px;
-        }
-      }
-    }
-
-    &.@{WIDGET_TYPE_DURATION} {
-      .input-group {
-        width: auto !important;
-        .pull-right();
-
-        .bdp-input {
-          // needed to position the reset btn next to it
-          display: inline-block;
-
-          input {
-            max-width: 60px;
-            // a little more margin with the labels
-            margin-bottom: 5px;
-          }
-        }
         //sync this with the color reset btn in blocks main.less
         .btn-reset {
           color: #333;
@@ -101,11 +50,59 @@
       }
     }
 
+    //a number spinner should be on the same line and rather small
+    &.@{WIDGET_TYPE_NUMBER} {
+
+      .input-group {
+        input {
+          max-width: 100px;
+        }
+      }
+    }
+
+    //date and time are small enough to fit on the same line
+    &.@{WIDGET_TYPE_DATE} {
+      .input-group {
+        &,
+        & input {
+          max-width: 160px;
+        }
+      }
+    }
+    &.@{WIDGET_TYPE_TIME} {
+      .input-group {
+       &,
+        & input {
+          max-width: 130px;
+        }
+      }
+    }
+    &.@{WIDGET_TYPE_DATETIME} {
+      .input-group {
+        &,
+        & input {
+          max-width: 230px;
+        }
+      }
+    }
+
+    &.@{WIDGET_TYPE_DURATION} {
+      .input-group {
+       .bdp-input {
+          // needed to position the reset btn next to it
+          display: inline-block;
+
+          input {
+            max-width: 60px;
+            // a little more margin with the labels
+            margin-bottom: 5px;
+          }
+        }
+      }
+    }
+
     &.@{WIDGET_TYPE_COLOR} {
       .input-group {
-        width: auto !important;
-        .pull-right();
-
         &,
         & input {
           width: 45px;

@@ -490,64 +490,101 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             // (note that an empty value is also a value, so check for attribute presence)
             if (!propElement.hasAttribute(CONTENT_ATTR)) {
 
-                var changeListener = function (oldValue, newValue)
-                {
-                    if (newValue) {
-
-                        propElement.html(newValue);
-                        propElement.attr(CONTENT_ATTR, newValue);
-
-                        if (inSidebar) {
-                            _this._checkBasicCreateDestroy(_this, propElement, propParentElement, newValue);
-                        }
-                    }
-                    // If the newValueTerm is undefined, the content attribute will have been erased.
-                    // However, we don't want that, because this would mean the placeholder in the html tag
-                    // would become the value of the property, so make sure to set it back explicitly.
-                    else {
-                        propElement.html(placeholder);
-                        propElement.attr(CONTENT_ATTR, defaultValue);
-
-                        if (inSidebar) {
-                            _this._checkBasicCreateDestroy(_this, propElement, propParentElement, undefined);
-                        }
-                    }
-
-                    // this is needed when we're in the sidebar (setting a value creates an extra div),
-                    // but doing it always doesn't hurt.
-                    UI.refresh();
-                };
-
                 var endpoint = valueTerm.widgetConfig[BlocksConstants.WIDGET_CONFIG_IMMUTABLE_ENDPOINT];
                 if (!endpoint) {
                     Notification.error(Commons.format(FactMessages.missingEndpointError, valueTerm.curie));
                 }
                 else {
 
-                    //note that this shouldn always be undefined, but let's do it this way to keep track of where it's used
-                    var oldValue = propElement.attr(CONTENT_ATTR);
+                    var resetBtn;
+                    var reloadBtn;
 
-                    // if we don't have a value (this should mean this is the first time this fact is initialized),
-                    // contact the value endpoint and use the 'resource' property of the ResourceProxy as the first value
-                    $.getJSON(endpoint)
-                        .done(function (data)
+                    var changeListener = function (oldValue, newValue)
+                    {
+                        if (newValue) {
+
+                            propElement.html(newValue);
+                            propElement.attr(CONTENT_ATTR, newValue);
+
+                            if (inSidebar) {
+                                _this._checkBasicCreateDestroy(_this, propElement, propParentElement, newValue);
+                                resetBtn.css('display', '');
+                                reloadBtn.css('display','none');
+                            }
+                        }
+                        // If the newValueTerm is undefined, the content attribute will have been erased.
+                        // However, we don't want that, because this would mean the placeholder in the html tag
+                        // would become the value of the property, so make sure to set it back explicitly.
+                        else {
+                            propElement.html(placeholder);
+                            propElement.attr(CONTENT_ATTR, defaultValue);
+
+                            if (inSidebar) {
+                                _this._checkBasicCreateDestroy(_this, propElement, propParentElement, defaultValue);
+                                resetBtn.css('display','none');
+                                reloadBtn.css('display', '');
+                            }
+                        }
+
+                        // this is needed when we're in the sidebar (setting a value creates an extra div),
+                        // but doing it always doesn't hurt.
+                        UI.refresh();
+                    };
+
+                    var reloadValue = function (oldValue)
+                    {
+                        // if we don't have a value (this should mean this is the first time this fact is initialized),
+                        // contact the value endpoint and use the 'resource' property of the ResourceProxy as the first value
+                        $.getJSON(endpoint)
+                            .done(function (data)
+                            {
+                                changeListener(oldValue, data.resource);
+                            })
+                            .fail(function (xhr, textStatus, exception)
+                            {
+                                Notification.error(BlocksMessages.generalServerDataError + (exception ? "; " + exception : ""), xhr);
+                            });
+                    };
+
+                    // if we're in the sidebar, we need to create an artificial widget to remove or load the value
+                    if (inSidebar) {
+
+                        var id = Commons.generateId();
+                        retVal = $('<div class="' + BlocksConstants.WIDGET_TYPE_WRAPPER_CLASS + '"></div>');
+                        retVal.addClass(valueTerm.widgetType);
+                        $('<label for="' + id + '">' + _this._buildSidebarObjectLabel(valueTerm) + '</label>').appendTo(retVal);
+
+                        var inputGroup = $('<div class="input-group"></div>').appendTo(retVal);
+                        resetBtn = $('<a href="javascript:void(0);" class="btn btn-link btn-xs btn-reset"><i class="fa fa-trash-o"></a>').appendTo(inputGroup);
+                        resetBtn.click(function (e)
                         {
-                            changeListener(oldValue, data.resource);
-                        })
-                        .fail(function (xhr, textStatus, exception)
+                            changeListener(propElement.attr(CONTENT_ATTR), defaultValue);
+                        });
+                        reloadBtn = $('<a href="javascript:void(0);" class="btn btn-link btn-xs btn-reset"><i class="fa fa-rotate-left"></a>').appendTo(inputGroup);
+                        reloadBtn.click(function (e)
                         {
-                            Notification.error(BlocksMessages.generalServerDataError + (exception ? "; " + exception : ""), xhr);
+                            reloadValue(propElement.attr(CONTENT_ATTR));
                         });
 
-                    //call it once in a hacky way to set the default value
-                    //Note: we don't call it if we're in the sidebar because we're hiding the propElements of empty properties
-                    if (!skipHtmlChange && !inSidebar && defaultValue != null) {
-                        changeListener(undefined, defaultValue);
-                    }
+                        //start out by only showing the reload button
+                        // note: we're explicitly not using show()/hide() because
+                        // it turns the "display: inline-block" into a "display: inline"
+                        // and messes with the layout
+                        resetBtn.css('display','none');
 
-                    //if we're in the sidebar, we must initialize the old value for the create/destroy functionality to work
-                    if (inSidebar) {
-                        _this._initializeOldVal(propElement, oldValue);
+                        //if we're in the sidebar, we must initialize the old value for the create/destroy functionality to work
+                        _this._initializeOldVal(propElement, undefined);
+                    }
+                    else {
+
+                        // this will contact the server and get a new value
+                        reloadValue();
+
+                        //call it once in a hacky way to set the default value
+                        //Note: we don't call it if we're in the sidebar because we're hiding the propElements of empty properties
+                        if (!skipHtmlChange && !inSidebar && defaultValue != null) {
+                            changeListener(undefined, defaultValue);
+                        }
                     }
                 }
             }
@@ -1562,7 +1599,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 rootPropElement.detach();
             }
 
-            if (propParentElement.children().length == 0) {
+            if (propParentElement.children().length === 0) {
                 _this._resetObjectPropElement(_this, propParentElement);
             }
         },
