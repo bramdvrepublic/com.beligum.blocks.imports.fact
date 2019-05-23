@@ -406,9 +406,16 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                         break;
                     case BlocksConstants.WIDGET_TYPE_DURATION:
 
-                        retVal.element = _this._createDurationWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, '', FactMessages.durationEntryPlaceholder);
+                        retVal.element = _this._createDurationWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, '', FactMessages.durationEntryPlaceholder, false);
 
                         break;
+
+                    case BlocksConstants.WIDGET_TYPE_TIMECODE:
+
+                        retVal.element = _this._createDurationWidget(_this, inSidebar, propElement, propParentElement, newValueTerm, skipHtmlChange, '', FactMessages.timecodeEntryPlaceholder, true);
+
+                        break;
+
                     case BlocksConstants.WIDGET_TYPE_COLOR:
 
                         // Note that there's also a _this.createColorInput(), but the _createInputWidget() offers us much more control over the default value etc.
@@ -872,12 +879,12 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
 
             return retVal;
         },
-        _createDurationWidget: function (_this, inSidebar, propElement, propParentElement, valueTerm, skipHtmlChange, defaultValue, placeholder)
+        _createDurationWidget: function (_this, inSidebar, propElement, propParentElement, valueTerm, skipHtmlChange, defaultValue, placeholder, asTimecode)
         {
             var id = Commons.generateId();
             var retVal = $('<div class="' + BlocksConstants.WIDGET_TYPE_WRAPPER_CLASS + '"></div>');
             retVal.addClass(valueTerm.widgetType);
-            var labelText = FactMessages.durationEntryLabel;
+            var labelText = asTimecode ? FactMessages.timecodeEntryLabel : FactMessages.durationEntryLabel;
             if (labelText || inSidebar) {
                 if (inSidebar) {
                     labelText = _this._buildSidebarObjectLabel(valueTerm);
@@ -898,98 +905,142 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 // don't execute this while initializing cause the inputs above are not set yet
                 if (!initializing) {
 
-                    var newValueMillis;
+                    var newValueNumber;
                     if (Commons.isUnset(newValue)) {
 
-                        var days = parseInt(daysInput.val(), 10) || 0;
+                        var days = asTimecode ? 0 : parseInt(daysInput.val(), 10) || 0;
                         var hours = parseInt(hoursInput.val(), 10) || 0;
                         var minutes = parseInt(minutesInput.val(), 10) || 0;
                         var seconds = parseInt(secondsInput.val(), 10) || 0;
                         var millis = parseInt(millisInput.val(), 10) || 0;
 
-                        newValueMillis = millis +
-                            seconds * 1000 +
-                            minutes * 60 * 1000 +
-                            hours * 60 * 60 * 1000 +
-                            days * 24 * 60 * 60 * 1000;
+                        if (asTimecode) {
+                            // this means the base of our timecode will be seconds,
+                            // where the decimal part is the frames and has 3 digits precision
+                            newValueNumber = (millis / 1000.0) +
+                                seconds +
+                                minutes * 60 +
+                                hours * 60 * 60;
+                        }
+                        else {
+                            // this means the base of our duration will be milliseconds
+                            newValueNumber = millis +
+                                seconds * 1000 +
+                                minutes * 60 * 1000 +
+                                hours * 60 * 60 * 1000 +
+                                days * 24 * 60 * 60 * 1000;
+                        }
                     }
                     else {
-                        newValueMillis = parseInt(newValue, 10) || 0;
+                        if (asTimecode) {
+                            newValueNumber = parseFloat(newValue) || 0.0;
+                        }
+                        else {
+                            newValueNumber = parseInt(newValue, 10) || 0;
+                        }
                     }
 
                     if (inSidebar) {
-                        _this._checkBasicCreateDestroy(_this, propElement, propParentElement, newValueMillis);
+                        _this._checkBasicCreateDestroy(_this, propElement, propParentElement, newValueNumber);
                     }
 
-                    if (newValueMillis > 0) {
+                    if (newValueNumber > 0) {
 
                         // Note: this means the true value of a duration is the number of milliseconds
-                        propElement.attr(CONTENT_ATTR, newValueMillis);
+                        propElement.attr(CONTENT_ATTR, newValueNumber);
 
-                        //var val = moment.utc(newValue * 1000).format('HH:mm:ss');
-                        // see https://momentjs.com/docs/#/durations/
-                        var duration = moment.duration(newValueMillis);
+                        if (asTimecode) {
 
-                        var htmlVal = '';
-                        switch (format) {
-                            case BlocksConstants.WIDGET_CONFIG_DURATION_FORMAT_FULL:
-                            default:
+                            var fractions = ('' + newValueNumber).split(".");
+                            var integerNumber = parseInt(fractions[0], 10) || 0;
+                            var fractionNumber = parseInt(fractions[1], 10) || 0;
 
-                                if (duration.days() > 0) {
-                                    htmlVal += (htmlVal === '' ? '' : ', ') + duration.days() + ' ' + (duration.days() === 1 ? FactMessages.durationEntryDayLabel : FactMessages.durationEntryDaysLabel);
-                                }
-                                if (duration.hours() > 0) {
-                                    htmlVal += (htmlVal === '' ? '' : ', ') + duration.hours() + ' ' + (duration.hours() === 1 ? FactMessages.durationEntryHourLabel : FactMessages.durationEntryHoursLabel);
-                                }
-                                if (duration.minutes() > 0) {
-                                    htmlVal += (htmlVal === '' ? '' : ', ') + duration.minutes() + ' ' + (duration.minutes() === 1 ? FactMessages.durationEntryMinuteLabel : FactMessages.durationEntryMinutesLabel);
-                                }
-                                if (duration.seconds() > 0) {
-                                    htmlVal += (htmlVal === '' ? '' : ', ') + duration.seconds() + ' ' + (duration.seconds() === 1 ? FactMessages.durationEntrySecondLabel : FactMessages.durationEntrySecondsLabel);
-                                }
-                                if (duration.milliseconds() > 0) {
-                                    htmlVal += (htmlVal === '' ? '' : ', ') + duration.milliseconds() + ' ' + (duration.milliseconds() === 1 ? FactMessages.durationEntryMillisLabel : FactMessages.durationEntryMillisLabel);
-                                }
+                            // note: duration.js needs milliseconds
+                            var duration = moment.duration(integerNumber * 1000);
 
-                                // note: we always at least set the seconds
-                                if (htmlVal === '') {
-                                    htmlVal = '0' + FactMessages.durationEntrySecondsLabel;
-                                }
+                            var htmlVal = '';
 
-                                break;
+                            htmlVal += _this._zeroPadding(duration.hours(), 2);
+                            htmlVal += ':' + _this._zeroPadding(duration.minutes(), 2);
+                            htmlVal += ':' + _this._zeroPadding(duration.seconds(), 2);
+                            // note: the precision of the stored value is 3, but we'll display them as 2
+                            // because it matches SMPTE time code formatting. We only use 3 to store the value
+                            // in order to be able to change this for future use without updating all stored values
+                            htmlVal += ':' + _this._zeroPadding(fractionNumber, 2);
 
-                            case BlocksConstants.WIDGET_CONFIG_DURATION_FORMAT_SHORT:
+                            propElement.html(htmlVal);
 
-                                // Example: 7.23:59:59.999
-
-                                if (duration.days() > 0) {
-                                    htmlVal += duration.days() + '.';
-                                }
-
-                                htmlVal += _this._zeroPadding(duration.hours(), 2);
-                                htmlVal += ':' + _this._zeroPadding(duration.minutes(), 2);
-                                htmlVal += ':' + _this._zeroPadding(duration.seconds(), 2);
-
-                                if (duration.milliseconds() > 0) {
-                                    htmlVal += '.' + _this._zeroPadding(duration.milliseconds(), 3);
-                                }
-
-                                break;
-
-                            case BlocksConstants.WIDGET_CONFIG_DURATION_FORMAT_ISO:
-
-                                htmlVal = duration.toISOString();
-
-                                break;
+                            millisInput.val(fractionNumber);
+                            secondsInput.val(duration.seconds());
+                            minutesInput.val(duration.minutes());
+                            hoursInput.val(duration.hours());
                         }
+                        else {
+                            //var val = moment.utc(newValue * 1000).format('HH:mm:ss');
+                            // see https://momentjs.com/docs/#/durations/
+                            var duration = moment.duration(newValueNumber);
 
-                        propElement.html(htmlVal);
+                            var htmlVal = '';
+                            switch (format) {
+                                case BlocksConstants.WIDGET_CONFIG_DURATION_FORMAT_FULL:
+                                default:
 
-                        millisInput.val(duration.milliseconds());
-                        secondsInput.val(duration.seconds());
-                        minutesInput.val(duration.minutes());
-                        hoursInput.val(duration.hours());
-                        daysInput.val(duration.days());
+                                    if (duration.days() > 0) {
+                                        htmlVal += (htmlVal === '' ? '' : ', ') + duration.days() + ' ' + (duration.days() === 1 ? FactMessages.durationEntryDayLabel : FactMessages.durationEntryDaysLabel);
+                                    }
+                                    if (duration.hours() > 0) {
+                                        htmlVal += (htmlVal === '' ? '' : ', ') + duration.hours() + ' ' + (duration.hours() === 1 ? FactMessages.durationEntryHourLabel : FactMessages.durationEntryHoursLabel);
+                                    }
+                                    if (duration.minutes() > 0) {
+                                        htmlVal += (htmlVal === '' ? '' : ', ') + duration.minutes() + ' ' + (duration.minutes() === 1 ? FactMessages.durationEntryMinuteLabel : FactMessages.durationEntryMinutesLabel);
+                                    }
+                                    if (duration.seconds() > 0) {
+                                        htmlVal += (htmlVal === '' ? '' : ', ') + duration.seconds() + ' ' + (duration.seconds() === 1 ? FactMessages.durationEntrySecondLabel : FactMessages.durationEntrySecondsLabel);
+                                    }
+                                    if (duration.milliseconds() > 0) {
+                                        htmlVal += (htmlVal === '' ? '' : ', ') + duration.milliseconds() + ' ' + (duration.milliseconds() === 1 ? FactMessages.durationEntryMillisLabel : FactMessages.durationEntryMillisLabel);
+                                    }
+
+                                    // note: we always at least set the seconds
+                                    if (htmlVal === '') {
+                                        htmlVal = '0' + FactMessages.durationEntrySecondsLabel;
+                                    }
+
+                                    break;
+
+                                case BlocksConstants.WIDGET_CONFIG_DURATION_FORMAT_SHORT:
+
+                                    // Example: 7.23:59:59.999
+
+                                    if (duration.days() > 0) {
+                                        htmlVal += duration.days() + '.';
+                                    }
+
+                                    htmlVal += _this._zeroPadding(duration.hours(), 2);
+                                    htmlVal += ':' + _this._zeroPadding(duration.minutes(), 2);
+                                    htmlVal += ':' + _this._zeroPadding(duration.seconds(), 2);
+
+                                    if (duration.milliseconds() > 0) {
+                                        htmlVal += '.' + _this._zeroPadding(duration.milliseconds(), 3);
+                                    }
+
+                                    break;
+
+                                case BlocksConstants.WIDGET_CONFIG_DURATION_FORMAT_ISO:
+
+                                    htmlVal = duration.toISOString();
+
+                                    break;
+                            }
+
+                            propElement.html(htmlVal);
+
+                            millisInput.val(duration.milliseconds());
+                            secondsInput.val(duration.seconds());
+                            minutesInput.val(duration.minutes());
+                            hoursInput.val(duration.hours());
+                            daysInput.val(duration.days());
+                        }
                     }
                     else {
                         //don't remove the attr, set it to empty (or the help text in the HTML will end up as the value)
@@ -1000,7 +1051,9 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                         secondsInput.val(0);
                         minutesInput.val(0);
                         hoursInput.val(0);
-                        daysInput.val(0);
+                        if (!asTimecode) {
+                            daysInput.val(0);
+                        }
                     }
 
                     // this is needed when we're in the sidebar (setting a value creates an extra div),
@@ -1015,11 +1068,13 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             {
                 updateCallback();
             };
-            daysInput = this._createDurationInput(FactMessages.durationWidgetDaysLabel, inputChanged).appendTo(inputGroup).find('input');
+            if (!asTimecode) {
+                daysInput = this._createDurationInput(FactMessages.durationWidgetDaysLabel, inputChanged).appendTo(inputGroup).find('input');
+            }
             hoursInput = this._createDurationInput(FactMessages.durationWidgetHoursLabel, inputChanged).appendTo(inputGroup).find('input');
             minutesInput = this._createDurationInput(FactMessages.durationWidgetMinutesLabel, inputChanged).appendTo(inputGroup).find('input');
             secondsInput = this._createDurationInput(FactMessages.durationWidgetSecondsLabel, inputChanged).appendTo(inputGroup).find('input');
-            millisInput = this._createDurationInput(FactMessages.durationWidgetMillisLabel, inputChanged).appendTo(inputGroup).find('input');
+            millisInput = this._createDurationInput(asTimecode ? FactMessages.timecodeWidgetFramesLabel : FactMessages.durationWidgetMillisLabel, inputChanged).appendTo(inputGroup).find('input');
 
             if (inSidebar) {
                 var reset = $('<a href="javascript:void(0);" class="btn btn-link btn-xs btn-reset"><i class="fa fa-trash-o"></a>').appendTo(inputGroup);
@@ -1029,7 +1084,9 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                     secondsInput.val(0);
                     minutesInput.val(0);
                     hoursInput.val(0);
-                    daysInput.val(0);
+                    if (!asTimecode) {
+                        daysInput.val(0);
+                    }
 
                     updateCallback();
                 });
@@ -1043,7 +1100,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 updateCallback();
             }
             else {
-                updateCallback(parseInt(firstValue));
+                updateCallback(asTimecode ? parseFloat(firstValue) : parseInt(firstValue, 10));
             }
 
             return retVal;

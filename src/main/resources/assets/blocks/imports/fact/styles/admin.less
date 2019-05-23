@@ -34,6 +34,7 @@
     &.@{WIDGET_TYPE_TIME},
     &.@{WIDGET_TYPE_DATETIME},
     &.@{WIDGET_TYPE_DURATION},
+    &.@{WIDGET_TYPE_TIMECODE},
     &.@{WIDGET_TYPE_COLOR} {
       .input-group {
         width: auto !important;
@@ -87,7 +88,8 @@
       }
     }
 
-    &.@{WIDGET_TYPE_DURATION} {
+    &.@{WIDGET_TYPE_DURATION},
+    &.@{WIDGET_TYPE_TIMECODE} {
       .input-group {
         & > div {
           display: inline-block;
