@@ -886,6 +886,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             }
 
             var initializing = true;
+            var format = valueTerm.widgetConfig[BlocksConstants.WIDGET_CONFIG_DURATION_FORMAT] || BlocksConstants.WIDGET_CONFIG_DURATION_FORMAT_FULL;
             var daysInput;
             var hoursInput;
             var minutesInput;
@@ -929,29 +930,60 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                         // see https://momentjs.com/docs/#/durations/
                         var duration = moment.duration(newValueMillis);
 
-                        var val = '';
-                        if (duration.days() > 0) {
-                            val += (val === '' ? '' : ', ') + duration.days() + ' ' + (duration.days() === 1 ? FactMessages.durationEntryDayLabel : FactMessages.durationEntryDaysLabel);
-                        }
-                        if (duration.hours() > 0) {
-                            val += (val === '' ? '' : ', ') + duration.hours() + ' ' + (duration.hours() === 1 ? FactMessages.durationEntryHourLabel : FactMessages.durationEntryHoursLabel);
-                        }
-                        if (duration.minutes() > 0) {
-                            val += (val === '' ? '' : ', ') + duration.minutes() + ' ' + (duration.minutes() === 1 ? FactMessages.durationEntryMinuteLabel : FactMessages.durationEntryMinutesLabel);
-                        }
-                        if (duration.seconds() > 0) {
-                            val += (val === '' ? '' : ', ') + duration.seconds() + ' ' + (duration.seconds() === 1 ? FactMessages.durationEntrySecondLabel : FactMessages.durationEntrySecondsLabel);
-                        }
-                        if (duration.milliseconds() > 0) {
-                            val += (val === '' ? '' : ', ') + duration.milliseconds() + ' ' + (duration.milliseconds() === 1 ? FactMessages.durationEntryMillisLabel : FactMessages.durationEntryMillisLabel);
+                        var htmlVal = '';
+                        switch (format) {
+                            case BlocksConstants.WIDGET_CONFIG_DURATION_FORMAT_FULL:
+                            default:
+
+                                if (duration.days() > 0) {
+                                    htmlVal += (htmlVal === '' ? '' : ', ') + duration.days() + ' ' + (duration.days() === 1 ? FactMessages.durationEntryDayLabel : FactMessages.durationEntryDaysLabel);
+                                }
+                                if (duration.hours() > 0) {
+                                    htmlVal += (htmlVal === '' ? '' : ', ') + duration.hours() + ' ' + (duration.hours() === 1 ? FactMessages.durationEntryHourLabel : FactMessages.durationEntryHoursLabel);
+                                }
+                                if (duration.minutes() > 0) {
+                                    htmlVal += (htmlVal === '' ? '' : ', ') + duration.minutes() + ' ' + (duration.minutes() === 1 ? FactMessages.durationEntryMinuteLabel : FactMessages.durationEntryMinutesLabel);
+                                }
+                                if (duration.seconds() > 0) {
+                                    htmlVal += (htmlVal === '' ? '' : ', ') + duration.seconds() + ' ' + (duration.seconds() === 1 ? FactMessages.durationEntrySecondLabel : FactMessages.durationEntrySecondsLabel);
+                                }
+                                if (duration.milliseconds() > 0) {
+                                    htmlVal += (htmlVal === '' ? '' : ', ') + duration.milliseconds() + ' ' + (duration.milliseconds() === 1 ? FactMessages.durationEntryMillisLabel : FactMessages.durationEntryMillisLabel);
+                                }
+
+                                // note: we always at least set the seconds
+                                if (htmlVal === '') {
+                                    htmlVal = '0' + FactMessages.durationEntrySecondsLabel;
+                                }
+
+                                break;
+
+                            case BlocksConstants.WIDGET_CONFIG_DURATION_FORMAT_SHORT:
+
+                                // Example: 7.23:59:59.999
+
+                                if (duration.days() > 0) {
+                                    htmlVal += duration.days() + '.';
+                                }
+
+                                htmlVal += _this._zeroPadding(duration.hours(), 2);
+                                htmlVal += ':' + _this._zeroPadding(duration.minutes(), 2);
+                                htmlVal += ':' + _this._zeroPadding(duration.seconds(), 2);
+
+                                if (duration.milliseconds() > 0) {
+                                    htmlVal += '.' + _this._zeroPadding(duration.milliseconds(), 3);
+                                }
+
+                                break;
+
+                            case BlocksConstants.WIDGET_CONFIG_DURATION_FORMAT_ISO:
+
+                                htmlVal = duration.toISOString();
+
+                                break;
                         }
 
-                        // note: we always at least set the seconds
-                        if (val === '') {
-                            val = '0' + FactMessages.durationEntrySecondsLabel;
-                        }
-
-                        propElement.html(val);
+                        propElement.html(htmlVal);
 
                         millisInput.val(duration.milliseconds());
                         secondsInput.val(duration.seconds());
@@ -979,7 +1011,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
 
             var inputGroup = $('<div class="input-group"></div>').appendTo(retVal);
 
-            var inputChanged = function(e)
+            var inputChanged = function (e)
             {
                 updateCallback();
             };
@@ -1578,6 +1610,14 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             return $('<div>', {
                 html: [input, label],
             });
+        },
+        _zeroPadding: function (num, size)
+        {
+            var s = num + "";
+            while (s.length < size) {
+                s = "0" + s;
+            }
+            return s;
         },
         /**
          * A general method that checks if the newly setted value in a property change listener should trigger one of the
