@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 //-----IMPORTS-----
 @import (reference) "/assets/webjars/bootstrap/3.3.4/less/variables.less";
 @import (reference) "/assets/webjars/bootstrap/3.3.4/less/mixins.less";
@@ -69,14 +68,16 @@
         }
       }
     }
+
     &.@{WIDGET_TYPE_TIME} {
       .input-group {
-       &,
+        &,
         & input {
           max-width: 130px;
         }
       }
     }
+
     &.@{WIDGET_TYPE_DATETIME} {
       .input-group {
         &,
@@ -88,14 +89,20 @@
 
     &.@{WIDGET_TYPE_DURATION} {
       .input-group {
-       .bdp-input {
-          // needed to position the reset btn next to it
+        & > div {
           display: inline-block;
+          text-align: center;
+          line-height: 1;
+          padding: 5px 3px;
 
           input {
             max-width: 60px;
             // a little more margin with the labels
             margin-bottom: 5px;
+          }
+
+          label {
+            display: block;
           }
         }
       }
@@ -132,6 +139,7 @@
               font-weight: bold;
               margin: 0;
             }
+
             &.@{WIDGET_TYPE_RES_SUG_SUBTITLE_CLASS} {
               font-size: 0.8em;
               margin: 0;

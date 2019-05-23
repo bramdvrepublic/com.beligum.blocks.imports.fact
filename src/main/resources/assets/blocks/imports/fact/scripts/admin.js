@@ -509,7 +509,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                             if (inSidebar) {
                                 _this._checkBasicCreateDestroy(_this, propElement, propParentElement, newValue);
                                 resetBtn.css('display', '');
-                                reloadBtn.css('display','none');
+                                reloadBtn.css('display', 'none');
                             }
                         }
                         // If the newValueTerm is undefined, the content attribute will have been erased.
@@ -521,7 +521,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
 
                             if (inSidebar) {
                                 _this._checkBasicCreateDestroy(_this, propElement, propParentElement, defaultValue);
-                                resetBtn.css('display','none');
+                                resetBtn.css('display', 'none');
                                 reloadBtn.css('display', '');
                             }
                         }
@@ -570,7 +570,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                         // note: we're explicitly not using show()/hide() because
                         // it turns the "display: inline-block" into a "display: inline"
                         // and messes with the layout
-                        resetBtn.css('display','none');
+                        resetBtn.css('display', 'none');
 
                         //if we're in the sidebar, we must initialize the old value for the create/destroy functionality to work
                         _this._initializeOldVal(propElement, undefined);
@@ -885,106 +885,133 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                 var label = ($('<label for="' + id + '">' + labelText + '</label>')).appendTo(retVal);
             }
 
-            var updateCallback = function (propElement, placeholder, newValue)
+            var initializing = true;
+            var daysInput;
+            var hoursInput;
+            var minutesInput;
+            var secondsInput;
+            var millisInput;
+
+            var updateCallback = function (newValue)
             {
-                if (inSidebar) {
-                    _this._checkBasicCreateDestroy(_this, propElement, propParentElement, newValue);
+                // don't execute this while initializing cause the inputs above are not set yet
+                if (!initializing) {
+
+                    var newValueMillis;
+                    if (Commons.isUnset(newValue)) {
+
+                        var days = parseInt(daysInput.val(), 10) || 0;
+                        var hours = parseInt(hoursInput.val(), 10) || 0;
+                        var minutes = parseInt(minutesInput.val(), 10) || 0;
+                        var seconds = parseInt(secondsInput.val(), 10) || 0;
+                        var millis = parseInt(millisInput.val(), 10) || 0;
+
+                        newValueMillis = millis +
+                            seconds * 1000 +
+                            minutes * 60 * 1000 +
+                            hours * 60 * 60 * 1000 +
+                            days * 24 * 60 * 60 * 1000;
+                    }
+                    else {
+                        newValueMillis = parseInt(newValue, 10) || 0;
+                    }
+
+                    if (inSidebar) {
+                        _this._checkBasicCreateDestroy(_this, propElement, propParentElement, newValueMillis);
+                    }
+
+                    if (newValueMillis > 0) {
+
+                        // Note: this means the true value of a duration is the number of milliseconds
+                        propElement.attr(CONTENT_ATTR, newValueMillis);
+
+                        //var val = moment.utc(newValue * 1000).format('HH:mm:ss');
+                        // see https://momentjs.com/docs/#/durations/
+                        var duration = moment.duration(newValueMillis);
+
+                        var val = '';
+                        if (duration.days() > 0) {
+                            val += (val === '' ? '' : ', ') + duration.days() + ' ' + (duration.days() === 1 ? FactMessages.durationEntryDayLabel : FactMessages.durationEntryDaysLabel);
+                        }
+                        if (duration.hours() > 0) {
+                            val += (val === '' ? '' : ', ') + duration.hours() + ' ' + (duration.hours() === 1 ? FactMessages.durationEntryHourLabel : FactMessages.durationEntryHoursLabel);
+                        }
+                        if (duration.minutes() > 0) {
+                            val += (val === '' ? '' : ', ') + duration.minutes() + ' ' + (duration.minutes() === 1 ? FactMessages.durationEntryMinuteLabel : FactMessages.durationEntryMinutesLabel);
+                        }
+                        if (duration.seconds() > 0) {
+                            val += (val === '' ? '' : ', ') + duration.seconds() + ' ' + (duration.seconds() === 1 ? FactMessages.durationEntrySecondLabel : FactMessages.durationEntrySecondsLabel);
+                        }
+                        if (duration.milliseconds() > 0) {
+                            val += (val === '' ? '' : ', ') + duration.milliseconds() + ' ' + (duration.milliseconds() === 1 ? FactMessages.durationEntryMillisLabel : FactMessages.durationEntryMillisLabel);
+                        }
+
+                        // note: we always at least set the seconds
+                        if (val === '') {
+                            val = '0' + FactMessages.durationEntrySecondsLabel;
+                        }
+
+                        propElement.html(val);
+
+                        millisInput.val(duration.milliseconds());
+                        secondsInput.val(duration.seconds());
+                        minutesInput.val(duration.minutes());
+                        hoursInput.val(duration.hours());
+                        daysInput.val(duration.days());
+                    }
+                    else {
+                        //don't remove the attr, set it to empty (or the help text in the HTML will end up as the value)
+                        propElement.attr(CONTENT_ATTR, '');
+                        propElement.html(placeholder);
+
+                        millisInput.val(0);
+                        secondsInput.val(0);
+                        minutesInput.val(0);
+                        hoursInput.val(0);
+                        daysInput.val(0);
+                    }
+
+                    // this is needed when we're in the sidebar (setting a value creates an extra div),
+                    // but doing it always doesn't hurt.
+                    UI.refresh();
                 }
-
-                if (newValue && newValue !== '') {
-                    //Note: the duration picker returns seconds
-                    var millis = parseInt(newValue) * 1000;
-
-                    // Note: this means the true value of a duration is the number of milliseconds
-                    propElement.attr(CONTENT_ATTR, millis);
-
-                    //var val = moment.utc(newValue * 1000).format('HH:mm:ss');
-                    // see https://momentjs.com/docs/#/durations/
-                    var duration = moment.duration(millis);
-
-                    var val = '';
-                    if (duration.days() > 0) {
-                        val += (val === '' ? '' : ', ') + duration.days() + ' ' + (duration.days() === 1 ? FactMessages.durationEntryDayLabel : FactMessages.durationEntryDaysLabel);
-                    }
-                    if (duration.hours() > 0) {
-                        val += (val === '' ? '' : ', ') + duration.hours() + ' ' + (duration.hours() === 1 ? FactMessages.durationEntryHourLabel : FactMessages.durationEntryHoursLabel);
-                    }
-                    if (duration.minutes() > 0) {
-                        val += (val === '' ? '' : ', ') + duration.minutes() + ' ' + (duration.minutes() === 1 ? FactMessages.durationEntryMinuteLabel : FactMessages.durationEntryMinutesLabel);
-                    }
-                    // note: we always at least set the seconds
-                    if (duration.seconds() > 0 || val === '') {
-                        val += (val === '' ? '' : ', ') + duration.seconds() + ' ' + (duration.seconds() === 1 ? FactMessages.durationEntrySecondLabel : FactMessages.durationEntrySecondsLabel);
-                    }
-
-                    propElement.html(val);
-                }
-                else {
-                    //don't remove the attr, set it to empty (or the help text in the HTML will end up as the value)
-                    propElement.attr(CONTENT_ATTR, '');
-                    propElement.html(placeholder);
-                }
-
-                // this is needed when we're in the sidebar (setting a value creates an extra div),
-                // but doing it always doesn't hurt.
-                UI.refresh();
             };
 
             var inputGroup = $('<div class="input-group"></div>').appendTo(retVal);
+
+            var inputChanged = function(e)
+            {
+                updateCallback();
+            };
+            daysInput = this._createDurationInput(FactMessages.durationWidgetDaysLabel, inputChanged).appendTo(inputGroup).find('input');
+            hoursInput = this._createDurationInput(FactMessages.durationWidgetHoursLabel, inputChanged).appendTo(inputGroup).find('input');
+            minutesInput = this._createDurationInput(FactMessages.durationWidgetMinutesLabel, inputChanged).appendTo(inputGroup).find('input');
+            secondsInput = this._createDurationInput(FactMessages.durationWidgetSecondsLabel, inputChanged).appendTo(inputGroup).find('input');
+            millisInput = this._createDurationInput(FactMessages.durationWidgetMillisLabel, inputChanged).appendTo(inputGroup).find('input');
 
             if (inSidebar) {
                 var reset = $('<a href="javascript:void(0);" class="btn btn-link btn-xs btn-reset"><i class="fa fa-trash-o"></a>').appendTo(inputGroup);
                 reset.click(function (e)
                 {
-                    // this one resets the widget
-                    durationHolder.data('durationPicker').setValue(defaultValue);
-                    // this one resets the html
-                    updateCallback(propElement, placeholder, null);
+                    millisInput.val(0);
+                    secondsInput.val(0);
+                    minutesInput.val(0);
+                    hoursInput.val(0);
+                    daysInput.val(0);
+
+                    updateCallback();
                 });
             }
 
-            //the duration picker seems to attach itself to another element, setting it the display none
-            var durationHolder = $('<div/>').appendTo(inputGroup);
-            durationHolder.durationPicker({
-
-                translations: {
-                    day: FactMessages.durationEntryDaysLabel,
-                    hour: FactMessages.durationEntryHoursLabel,
-                    minute: FactMessages.durationEntryMinutesLabel,
-                    second: FactMessages.durationEntrySecondsLabel,
-                    days: FactMessages.durationEntryDaysLabel,
-                    hours: FactMessages.durationEntryHoursLabel,
-                    minutes: FactMessages.durationEntryMinutesLabel,
-                    seconds: FactMessages.durationEntrySecondsLabel,
-                },
-
-                // defines whether to show seconds or not
-                showSeconds: true,
-
-                // defines whether to show days or not
-                showDays: true,
-
-                // callback function that triggers every time duration is changed
-                //   value - duration in seconds
-                //   isInitializing - bool value
-                //                    Will be `true` when the plugin is initialized for the
-                //                    first time or when it's re-initialized by calling `setValue` method
-                onChanged: function (value, isInitializing)
-                {
-                    //don't call it while initializing, otherwise it will always reset to 0 on focus
-                    if (!isInitializing) {
-                        updateCallback(propElement, placeholder, value);
-                    }
-                }
-            });
-
+            // finish initialization and update it once
+            initializing = false;
             var firstValue = propElement.attr(CONTENT_ATTR);
             //if the html widget is uninitialized, try to set it to a default value
             if (Commons.isUnset(firstValue) || firstValue === placeholder) {
-                updateCallback(propElement, placeholder, null);
+                updateCallback();
             }
             else {
-                durationHolder.data('durationPicker').setValue(parseInt(firstValue) / 1000);
+                updateCallback(parseInt(firstValue));
             }
 
             return retVal;
@@ -1523,6 +1550,34 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             }
 
             return toggleButton;
+        },
+        _createDurationInput: function (label, changeListener, minValue, maxValue)
+        {
+            var id = Commons.generateId();
+
+            var input = $('<input>', {
+                id: id,
+                class: 'form-control input-sm',
+                type: 'number',
+                min: 0,
+                value: 0
+            }).change(changeListener);
+
+            if (minValue) {
+                input.attr('min', minValue);
+            }
+            if (maxValue) {
+                input.attr('max', maxValue);
+            }
+
+            var label = $('<label>', {
+                for: id,
+                text: label,
+            });
+
+            return $('<div>', {
+                html: [input, label],
+            });
         },
         /**
          * A general method that checks if the newly setted value in a property change listener should trigger one of the
