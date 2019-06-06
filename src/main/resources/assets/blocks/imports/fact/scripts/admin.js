@@ -1302,7 +1302,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                     };
 
                     // Note: let's re-use the AC endpoint, the endpoint should be able to deal with this, since implementing interface is the same
-                    retVal = this.addUniqueAttributeValueAsync(Sidebar, propElement, _this._buildSidebarObjectLabel(valueTerm), CONTENT_ATTR, acEndpoint, "label", "resource",
+                    retVal = this.addUniqueAttributeValueAsync(Sidebar, propElement, _this._buildSidebarObjectLabel(valueTerm), RESOURCE_ATTR, acEndpoint, "label", "resource",
                         null,
                         changeListener,
                         {
