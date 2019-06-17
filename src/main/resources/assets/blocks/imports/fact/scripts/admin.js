@@ -549,7 +549,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                             })
                             .fail(function (xhr, textStatus, exception)
                             {
-                                Notification.error(BlocksMessages.generalServerDataError + (exception ? "; " + exception : ""), xhr);
+                                Notification.jsonError(BlocksMessages.generalServerDataError, xhr, textStatus, exception);
                             });
                     };
 
@@ -1447,12 +1447,12 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                         })
                         .fail(function (xhr, textStatus, exception)
                         {
-                            Notification.error(BlocksMessages.generalServerDataError + (exception ? "; " + exception : ""), xhr);
+                            Notification.jsonError(BlocksMessages.generalServerDataError, xhr, textStatus, exception);
                         });
                 })
                 .fail(function (xhr, textStatus, exception)
                 {
-                    Notification.error(BlocksMessages.generalServerDataError + (exception ? "; " + exception : ""), xhr);
+                    Notification.jsonError(BlocksMessages.generalServerDataError, xhr, textStatus, exception);
                 });
 
             return retVal;
