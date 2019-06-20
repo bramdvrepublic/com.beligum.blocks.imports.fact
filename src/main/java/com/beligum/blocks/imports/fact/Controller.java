@@ -192,10 +192,9 @@ public class Controller extends DefaultTemplateController
                                 break;
 
                             case Resource:
-
                                 ResourceProxy resourceInfo = rdfProperty.getDataType().getEndpoint().getResource(rdfProperty.getDataType(), URI.create(resource), toLanguage);
                                 if (resourceInfo != null) {
-                                    htmlOutput.replace(propertyEl.getContent(), RdfTools.serializeResourceHtml(resourceInfo));
+                                    htmlOutput.replace(propertyEl.getContent(), RdfTools.serializeResourceHtml(rdfProperty, resourceInfo));
                                 }
 
                                 break;
