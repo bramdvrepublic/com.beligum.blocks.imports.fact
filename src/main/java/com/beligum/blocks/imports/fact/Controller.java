@@ -83,7 +83,8 @@ public class Controller extends DefaultTemplateController
         }
 
         //remove sub-resource URIs (they will get re-created on first save)
-        this.parseSubresources(source, element, htmlOutput, true);
+        // Update: not any more, changed to false, see https://github.com/republic-of-reinvention/com.stralo.framework/issues/70
+        this.parseSubresources(source, element, htmlOutput, false);
     }
 
     //-----PROTECTED METHODS-----
@@ -154,24 +155,27 @@ public class Controller extends DefaultTemplateController
                             case Color:
                             case Uri:
                                 break;
+
                             case Date:
                             case Time:
                             case DateTime:
-                                //note that the value is always stored in UTC zone (so the zone of this ZonedDateTime below should always be UTC)
-                                TemporalAccessor value = DateTimeFormatter.ISO_DATE_TIME.parse(content);
+
                                 //this flag only controls how the value above is rendered out to the html, not how it's stored
                                 ZoneId zone = RdfTools.parseRdfaBoolean(propertyEl.getAttributeValue(WIDGET_TYPE_TIME_GMT_ATTR)) ? UTC : ZoneId.systemDefault();
 
+                                //note that the value is always stored in UTC zone (so the zone of this ZonedDateTime below should always be UTC)
                                 switch (rdfProperty.getWidgetType()) {
                                     case Date:
-                                        htmlOutput.replace(propertyEl.getContent(), RdfTools.serializeDateHtml(zone, toLanguage, value));
+                                        htmlOutput.replace(propertyEl.getContent(), RdfTools.serializeDateHtml(zone, toLanguage, DateTimeFormatter.ISO_DATE.parse(content)));
                                         break;
                                     case Time:
-                                        htmlOutput.replace(propertyEl.getContent(), RdfTools.serializeTimeHtml(zone, toLanguage, value));
+                                        htmlOutput.replace(propertyEl.getContent(), RdfTools.serializeTimeHtml(zone, toLanguage, DateTimeFormatter.ISO_TIME.parse(content)));
                                         break;
                                     case DateTime:
-                                        htmlOutput.replace(propertyEl.getContent(), RdfTools.serializeDateTimeHtml(zone, toLanguage, value));
+                                        htmlOutput.replace(propertyEl.getContent(), RdfTools.serializeDateTimeHtml(zone, toLanguage, DateTimeFormatter.ISO_DATE_TIME.parse(content)));
                                         break;
+                                    default:
+                                        throw new IOException("Encountered unimplemented widget type parser, please fix; " + rdfProperty.getWidgetType());
                                 }
 
                                 break;
