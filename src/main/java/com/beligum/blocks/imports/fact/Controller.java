@@ -19,6 +19,7 @@ package com.beligum.blocks.imports.fact;
 import com.beligum.base.resources.ifaces.Source;
 import com.beligum.base.server.R;
 import com.beligum.base.templating.ifaces.TemplateContext;
+import com.beligum.base.utils.Logger;
 import com.beligum.blocks.config.WidgetType;
 import com.beligum.blocks.index.ifaces.ResourceProxy;
 import com.beligum.blocks.rdf.RdfFactory;
@@ -148,6 +149,7 @@ public class Controller extends DefaultTemplateController
                     if (content != null || resource != null) {
 
                         switch (rdfProperty.getWidgetType()) {
+                            case Immutable:
                             case Editor:
                             case InlineEditor:
                             case Boolean:

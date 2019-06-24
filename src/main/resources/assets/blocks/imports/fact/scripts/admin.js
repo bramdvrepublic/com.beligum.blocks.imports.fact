@@ -193,7 +193,14 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                         //By checking this, we allow changed property labels in the back-end to propagate to the entries in the front-end
                         // if they're focussed. Note that the text() function removes any possible <p></p> tags
                         if ($.trim(labelElement.text()) !== newValueTerm.label) {
-                            skipHtmlChange = false;
+                            // Note: if this is activated because the new label is null (eg. the label is not translated yet),
+                            // don't let it wipe out all data and start over, just delete the label (which is what would happen anyway)
+                            if (Commons.isUnset(newValueTerm.label)) {
+                                labelElement.empty();
+                            }
+                            else {
+                                skipHtmlChange = false;
+                            }
                         }
                     }
 
