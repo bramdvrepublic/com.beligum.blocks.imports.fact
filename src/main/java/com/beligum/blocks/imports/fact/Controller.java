@@ -25,9 +25,9 @@ import com.beligum.blocks.index.ifaces.ResourceProxy;
 import com.beligum.blocks.rdf.RdfFactory;
 import com.beligum.blocks.rdf.ifaces.RdfEndpoint;
 import com.beligum.blocks.rdf.ifaces.RdfProperty;
-import com.beligum.blocks.templating.blocks.DefaultTemplateController;
-import com.beligum.blocks.templating.blocks.HtmlParser;
-import com.beligum.blocks.templating.blocks.HtmlTemplate;
+import com.beligum.blocks.templating.DefaultTemplateController;
+import com.beligum.blocks.templating.HtmlParser;
+import com.beligum.blocks.templating.HtmlTemplate;
 import com.beligum.blocks.utils.RdfTools;
 import gen.com.beligum.blocks.imports.fact.constants.blocks.imports.fact;
 import net.htmlparser.jericho.*;
@@ -40,8 +40,8 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
 import java.util.*;
 
-import static com.beligum.blocks.templating.blocks.HtmlParser.RDF_CONTENT_ATTR;
-import static com.beligum.blocks.templating.blocks.HtmlParser.RDF_RESOURCE_ATTR;
+import static com.beligum.blocks.templating.HtmlParser.RDF_CONTENT_ATTR;
+import static com.beligum.blocks.templating.HtmlParser.RDF_RESOURCE_ATTR;
 import static gen.com.beligum.blocks.core.constants.blocks.core.WIDGET_TYPE_TIME_GMT_ATTR;
 import static java.time.ZoneOffset.UTC;
 
@@ -196,7 +196,7 @@ public class Controller extends DefaultTemplateController
                             case Resource:
                                 ResourceProxy resourceInfo = rdfProperty.getDataType().getEndpoint().getResource(rdfProperty.getDataType(), URI.create(resource), toLanguage);
                                 if (resourceInfo != null) {
-                                    htmlOutput.replace(propertyEl.getContent(), RdfTools.serializeResourceHtml(rdfProperty, resourceInfo));
+                                    htmlOutput.replace(propertyEl.getContent(), Importer.serializeResourceHtml(rdfProperty, resourceInfo));
                                 }
 
                                 break;
