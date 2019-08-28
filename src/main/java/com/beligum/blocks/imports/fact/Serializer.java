@@ -1,32 +1,14 @@
 package com.beligum.blocks.imports.fact;
 
-import com.beligum.base.server.R;
-import com.beligum.blocks.config.Settings;
-import com.beligum.blocks.index.ifaces.ResourceProxy;
-import com.beligum.blocks.rdf.ifaces.RdfEndpoint;
+import com.beligum.base.filesystem.ConstantsFileEntry;
 import com.beligum.blocks.rdf.ifaces.RdfProperty;
-import com.beligum.blocks.rdf.ontologies.RDF;
 import com.beligum.blocks.serializing.AbstractBlockSerializer;
-import com.beligum.blocks.serializing.BlockSerializer;
 import com.beligum.blocks.templating.TagTemplate;
-import com.beligum.blocks.utils.NamedUri;
-import com.beligum.blocks.utils.RdfTools;
-import gen.com.beligum.blocks.core.constants.blocks.core;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.math.NumberUtils;
+import org.jsoup.nodes.Element;
 
-import java.awt.*;
 import java.io.IOException;
-import java.net.URI;
-import java.text.ParseException;
-import java.time.*;
-import java.time.format.DateTimeFormatter;
-import java.time.format.FormatStyle;
-import java.time.temporal.TemporalAccessor;
-import java.util.Iterator;
 import java.util.Locale;
-
-import static java.time.ZoneOffset.UTC;
+import java.util.Map;
 
 /**
  * Created by bram on Aug 19, 2019
@@ -43,9 +25,25 @@ public class Serializer extends AbstractBlockSerializer
     @Override
     public CharSequence toHtml(TagTemplate blockType, RdfProperty property, Locale language, String value) throws IOException
     {
+        return this.toHtml(blockType, property, language, null, null, value);
+    }
+    /**
+     * Example HTML:
+     *
+     * <pre>
+     * <blocks-embed>
+     *     <div data-property="$CONSTANTS.blocks.imports.embed.EMBED_PROPERTY_NAME"> <iframe width="1280" height="720" src="https://www.youtube.com/embed/lJIrF4YjHfQ" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe> </div>
+     * </blocks-embed>
+     * </pre>
+     */
+    public CharSequence toHtml(TagTemplate blockType, RdfProperty property, Locale language, ConstantsFileEntry[] classes, Map<String, String> styles, String html)
+                    throws IOException
+    {
+        Element retVal = this.createTag(blockType, null, classes, styles);
 
 
-        return null;
+
+        return retVal.outerHtml();
     }
 
     //-----PROTECTED METHODS-----
