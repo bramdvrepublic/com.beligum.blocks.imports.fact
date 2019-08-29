@@ -752,7 +752,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                     propElement.attr(CONTENT_ATTR, CONTENT_VALUE_FALSE);
                 }
 
-                // Note: we just create a dummy inner <i>, rest is done in CSS, based on the content attribute
+                // Note: we just create a dummy inner <div>, rest is done in CSS, based on the content attribute
                 propElement.html('<div class="' + BlocksConstants.WIDGET_TYPE_BOOLEAN_VALUE_CLASS + '" />');
 
                 // this is needed when we're in the sidebar (setting a value creates an extra div),
@@ -900,7 +900,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             }
 
             var initializing = true;
-            var format = valueTerm.widgetConfig[BlocksConstants.WIDGET_CONFIG_DURATION_FORMAT] || BlocksConstants.WIDGET_CONFIG_DURATION_FORMAT_FULL;
+            var format = valueTerm.widgetConfig[BlocksConstants.WIDGET_CONFIG_DURATION_FORMAT];
             var daysInput;
             var hoursInput;
             var minutesInput;
@@ -951,7 +951,8 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                         _this._checkBasicCreateDestroy(_this, propElement, propParentElement, newValueNumber);
                     }
 
-                    if (newValueNumber > 0) {
+                    // we switched this from "> 0" to ">= 0" to allow zero-values (which make sense), but without testing, hope it's okay...
+                    if (newValueNumber >= 0) {
 
                         // Note: this means the true value of a duration is the number of milliseconds
                         propElement.attr(CONTENT_ATTR, newValueNumber);

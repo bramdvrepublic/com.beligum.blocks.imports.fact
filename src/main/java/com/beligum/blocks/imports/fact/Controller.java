@@ -163,18 +163,18 @@ public class Controller extends DefaultTemplateController
                             case DateTime:
 
                                 //this flag only controls how the value above is rendered out to the html, not how it's stored
-                                ZoneId zone = RdfTools.parseRdfaBoolean(propertyEl.getAttributeValue(WIDGET_TYPE_TIME_GMT_ATTR)) ? UTC : ZoneId.systemDefault();
+                                ZoneId zone = Serializer.parseRdfaBoolean(propertyEl.getAttributeValue(WIDGET_TYPE_TIME_GMT_ATTR)) ? UTC : ZoneId.systemDefault();
 
                                 //note that the value is always stored in UTC zone (so the zone of this ZonedDateTime below should always be UTC)
                                 switch (rdfProperty.getWidgetType()) {
                                     case Date:
-                                        htmlOutput.replace(propertyEl.getContent(), RdfTools.serializeDateHtml(zone, toLanguage, DateTimeFormatter.ISO_DATE.parse(content)));
+                                        htmlOutput.replace(propertyEl.getContent(), Serializer.serializeDateHtml(zone, toLanguage, DateTimeFormatter.ISO_DATE.parse(content)));
                                         break;
                                     case Time:
-                                        htmlOutput.replace(propertyEl.getContent(), RdfTools.serializeTimeHtml(zone, toLanguage, DateTimeFormatter.ISO_TIME.parse(content)));
+                                        htmlOutput.replace(propertyEl.getContent(), Serializer.serializeTimeHtml(zone, toLanguage, DateTimeFormatter.ISO_TIME.parse(content)));
                                         break;
                                     case DateTime:
-                                        htmlOutput.replace(propertyEl.getContent(), RdfTools.serializeDateTimeHtml(zone, toLanguage, DateTimeFormatter.ISO_DATE_TIME.parse(content)));
+                                        htmlOutput.replace(propertyEl.getContent(), Serializer.serializeDateTimeHtml(zone, toLanguage, DateTimeFormatter.ISO_DATE_TIME.parse(content)));
                                         break;
                                     default:
                                         throw new IOException("Encountered unimplemented widget type parser, please fix; " + rdfProperty.getWidgetType());
@@ -188,7 +188,7 @@ public class Controller extends DefaultTemplateController
                                 Iterable<ResourceProxy> enumSuggestion = rdfProperty.getEndpoint().search(rdfProperty, content, RdfEndpoint.QueryType.NAME, toLanguage, 1);
                                 Iterator<ResourceProxy> iter = enumSuggestion.iterator();
                                 if (iter.hasNext()) {
-                                    htmlOutput.replace(propertyEl.getContent(), RdfTools.serializeEnumHtml(iter.next()));
+                                    htmlOutput.replace(propertyEl.getContent(), Serializer.serializeEnumHtml(iter.next()));
                                 }
 
                                 break;
@@ -196,7 +196,7 @@ public class Controller extends DefaultTemplateController
                             case Resource:
                                 ResourceProxy resourceInfo = rdfProperty.getDataType().getEndpoint().getResource(rdfProperty.getDataType(), URI.create(resource), toLanguage);
                                 if (resourceInfo != null) {
-                                    htmlOutput.replace(propertyEl.getContent(), Importer.serializeResourceHtml(rdfProperty, resourceInfo));
+                                    htmlOutput.replace(propertyEl.getContent(), Serializer.serializeResourceHtml(rdfProperty, resourceInfo));
                                 }
 
                                 break;
