@@ -1380,7 +1380,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             var endpointConfig = {};
             endpointConfig[BlocksConstants.RDF_RES_TYPE_CURIE_PARAM] = objDatatypeCurie;
 
-            //ask the server to list all the terms of this property's object data type
+            // ask the server to list all the terms of this property's object data type
             $.getJSON(BlocksConstants.RDF_PROPERTIES_ENDPOINT, endpointConfig)
                 .done(function (allPropertiesData)
                 {
@@ -1409,6 +1409,8 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                                 var inSidebar = true;
                                 var skipHtmlChange;
 
+                                // Watch out: this basically means we can't have double entries in sub-properties.
+                                // But that's not enforced by the server side API, so it's a TODO...
                                 var existingObjProp = propElement.find('[' + PROPERTY_ATTR + '="' + curie + '"]').eq(ref.length - 1);
                                 if (existingObjProp.length) {
                                     objContainer = existingObjProp.parent();
@@ -1730,10 +1732,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
 
                 allPropChildren.sort(function (a, b)
                 {
-                    var aEl = $(a);
-                    var bEl = $(b);
-
-                    return +aEl.data(OBJ_INDEX_DATA_KEY) - +bEl.data(OBJ_INDEX_DATA_KEY);
+                    return (+$(a).data(OBJ_INDEX_DATA_KEY)) - (+$(b).data(OBJ_INDEX_DATA_KEY));
                 });
 
                 propParentElement.append(allPropChildren);
