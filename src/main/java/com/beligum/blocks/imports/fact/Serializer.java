@@ -11,7 +11,9 @@ import com.beligum.blocks.rdf.ifaces.RdfProperty;
 import com.beligum.blocks.rdf.ontologies.RDF;
 import com.beligum.blocks.serializing.AbstractBlockSerializer;
 import com.beligum.blocks.templating.HtmlParser;
+import com.beligum.blocks.templating.HtmlTemplate;
 import com.beligum.blocks.templating.TagTemplate;
+import com.beligum.blocks.templating.TemplateCache;
 import com.beligum.blocks.utils.DurationTools;
 import com.beligum.blocks.utils.NamedUri;
 import com.google.common.base.Predicate;
@@ -57,6 +59,7 @@ public class Serializer extends AbstractBlockSerializer
     {
         return this.toHtml(blockType, property, language, classes, styles, value);
     }
+
     /**
      * Example HTML:
      *
@@ -313,6 +316,11 @@ public class Serializer extends AbstractBlockSerializer
     }
 
     //-----PROTECTED METHODS-----
+    @Override
+    protected String[] getSupportedBlockNames()
+    {
+        return com.beligum.blocks.imports.fact.config.Settings.instance().getTagNames();
+    }
 
     //-----PRIVATE METHODS-----
     /**
@@ -862,36 +870,6 @@ public class Serializer extends AbstractBlockSerializer
                         return property.isPublic();
                     }
                 }));
-
-                /*
-                 *   <blocks-fact-entry>
-                 *         <div data-property="$CONSTANTS.blocks.imports.fact.FACT_ENTRY_NAME_PROPERTY"> test object </div>
-                 *         <div data-property="$CONSTANTS.blocks.imports.fact.FACT_ENTRY_VALUE_PROPERTY">
-                 *             <div class="property object" typeof="ror:SubPost" resource="/resource/1130494009577889453" property="ror:testObject">
-                 *                 <div class="main">
-                 *                     <label>label</label>
-                 *                     <div class="property inline-editor" property="rdfs:label"> Label of the object </div>
-                 *                 </div>
-                 *                 <div>
-                 *                     <label>text</label>
-                 *                     <div class="property editor" property="ror:text" datatype="rdf:HTML"> Example of some sub text </div>
-                 *                 </div>
-                 *                 <div>
-                 *                     <label>test number</label>
-                 *                     <div class="property number" property="ror:testNumber" datatype="xsd:int" content="4"> 4 </div>
-                 *                 </div>
-                 *                 <div>
-                 *                     <label>test date</label>
-                 *                     <div class="property date" property="ror:testDate" datatype="xsd:date" content="2019-05-10"> Friday May 10, 2019 </div>
-                 *                 </div>
-                 *                 <div>
-                 *                     <label>test immutable</label>
-                 *                     <div class="property immutable" property="ror:testImmutable" datatype="xsd:int" content="36"> 36 </div>
-                 *                 </div>
-                 *             </div>
-                 *         </div>
-                 *     </blocks-fact-entry>
-                 */
 
                 // prepare the wrapper tag
                 // Note: don't add the datatype, we're a reference (to our own data, yes, but the wrapper is still a ref) and don't hold any data
