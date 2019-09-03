@@ -25,9 +25,9 @@ import com.beligum.blocks.index.ifaces.ResourceProxy;
 import com.beligum.blocks.rdf.RdfFactory;
 import com.beligum.blocks.rdf.ifaces.RdfEndpoint;
 import com.beligum.blocks.rdf.ifaces.RdfProperty;
-import com.beligum.blocks.templating.DefaultTemplateController;
-import com.beligum.blocks.templating.HtmlParser;
-import com.beligum.blocks.templating.HtmlTemplate;
+import com.beligum.blocks.templating.blocks.DefaultTemplateController;
+import com.beligum.blocks.templating.blocks.HtmlParser;
+import com.beligum.blocks.templating.blocks.HtmlTemplate;
 import com.beligum.blocks.utils.RdfTools;
 import gen.com.beligum.blocks.imports.fact.constants.blocks.imports.fact;
 import net.htmlparser.jericho.*;
@@ -40,16 +40,15 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
 import java.util.*;
 
-import static com.beligum.blocks.templating.HtmlParser.RDF_CONTENT_ATTR;
-import static com.beligum.blocks.templating.HtmlParser.RDF_RESOURCE_ATTR;
+import static com.beligum.blocks.templating.blocks.HtmlParser.RDF_CONTENT_ATTR;
+import static com.beligum.blocks.templating.blocks.HtmlParser.RDF_RESOURCE_ATTR;
 import static gen.com.beligum.blocks.core.constants.blocks.core.WIDGET_TYPE_TIME_GMT_ATTR;
 import static java.time.ZoneOffset.UTC;
 
 /**
  * Created by bram on 2/3/17.
  */
-public class Controller extends DefaultTemplateController
-{
+public class Controller extends DefaultTemplateController {
     //-----CONSTANTS-----
 
     //-----VARIABLES-----
@@ -58,23 +57,23 @@ public class Controller extends DefaultTemplateController
 
     //-----PUBLIC METHODS-----
     @Override
-    public void created()
-    {
+    public void created() {
+
     }
+
     @Override
-    public void prepareForSave(Source source, Element element, OutputDocument htmlOutput)
-    {
+    public void prepareForSave(Source source, Element element, OutputDocument htmlOutput) {
         this.normalizeLabel(source, element, htmlOutput);
 
         this.parseSubresources(source, element, htmlOutput, false);
     }
+
     /**
      * Note that we could actually only normalize during save, because a new page should be rendered out correctly
      * if the fact entry was normalized during save. But by doing it just before a copy, we are backwards compatible.
      */
     @Override
-    public void prepareForCopy(Source source, Element element, OutputDocument htmlOutput, URI targetUri, Locale targetLanguage) throws IOException
-    {
+    public void prepareForCopy(Source source, Element element, OutputDocument htmlOutput, URI targetUri, Locale targetLanguage) throws IOException {
         this.normalizeLabel(source, element, htmlOutput);
 
         //Note that this must come before the stripping of the resource attributes see parseSubresources()
@@ -91,20 +90,25 @@ public class Controller extends DefaultTemplateController
     //-----PROTECTED METHODS-----
 
     //-----PRIVATE METHODS-----
+
     /**
      * When we copy/save a page with fiche entries, the labels of the entries will have changed using javascript, so we don't have a template-safe way of
      * normalizing them back to variables (only the default placeholder of the label tag will be normalized back to it's template variable).
      * So every time a template element comes in, we need to search for the label and normalize it back to it's template variable, based on
      * the currently set resource type label.
      */
-    private void normalizeLabel(Source source, Element element, OutputDocument htmlOutput)
-    {
+    private void normalizeLabel(Source source, Element element, OutputDocument htmlOutput) {
         Element propertyEl = element.getFirstElementByClass(fact.FACT_ENTRY_PROPERTY_CLASS);
         if (propertyEl != null) {
             String resourceType = HtmlTemplate.getPropertyAttribute(propertyEl.getStartTag());
             if (!StringUtils.isEmpty(resourceType)) {
                 RdfProperty rdfProperty = RdfFactory.getProperty(resourceType);
+
                 if (rdfProperty != null) {
+                    //add generatedValue if applicable
+                    if (rdfProperty.getValueModifier() != null) {
+                        this.fillInGeneratedValue(rdfProperty, source, propertyEl, htmlOutput);
+                    }
                     Element labelEl = element.getFirstElement(HtmlParser.NON_RDF_PROPERTY_ATTR, fact.FACT_ENTRY_NAME_PROPERTY, false);
                     if (labelEl != null) {
                         String testLabel = R.i18n().get(rdfProperty.getLabelMessage(), source.getLanguage());
@@ -118,10 +122,10 @@ public class Controller extends DefaultTemplateController
                                 String label = labelContent.toString().trim();
                                 if (label.equals(testLabel)) {
                                     String variable = new StringBuilder().append(R.resourceManager().getTemplateEngine().getVariablePrefix())
-                                                                         .append(TemplateContext.InternalProperties.MESSAGES.name())
-                                                                         .append(R.resourceManager().getTemplateEngine().getPathSeparator())
-                                                                         .append(rdfProperty.getLabelKey())
-                                                                         .toString();
+                                            .append(TemplateContext.InternalProperties.MESSAGES.name())
+                                            .append(R.resourceManager().getTemplateEngine().getPathSeparator())
+                                            .append(rdfProperty.getLabelKey())
+                                            .toString();
                                     htmlOutput.replace(labelContent, variable);
                                 }
                             }
@@ -131,12 +135,12 @@ public class Controller extends DefaultTemplateController
             }
         }
     }
+
     /**
      * When we copy a page with fiche entries, some of the values of the entries have been set during creation and in a specified language.
      * We might want to re-read them to eg. set the name of the link to a translated value.
      */
-    private void translateValue(Source source, Element element, OutputDocument htmlOutput, Locale toLanguage) throws IOException
-    {
+    private void translateValue(Source source, Element element, OutputDocument htmlOutput, Locale toLanguage) throws IOException {
         Element propertyEl = element.getFirstElementByClass(fact.FACT_ENTRY_PROPERTY_CLASS);
         if (propertyEl != null) {
             String resourceType = HtmlTemplate.getPropertyAttribute(propertyEl.getStartTag());
@@ -163,18 +167,18 @@ public class Controller extends DefaultTemplateController
                             case DateTime:
 
                                 //this flag only controls how the value above is rendered out to the html, not how it's stored
-                                ZoneId zone = Serializer.parseRdfaBoolean(propertyEl.getAttributeValue(WIDGET_TYPE_TIME_GMT_ATTR)) ? UTC : ZoneId.systemDefault();
+                                ZoneId zone = RdfTools.parseRdfaBoolean(propertyEl.getAttributeValue(WIDGET_TYPE_TIME_GMT_ATTR)) ? UTC : ZoneId.systemDefault();
 
                                 //note that the value is always stored in UTC zone (so the zone of this ZonedDateTime below should always be UTC)
                                 switch (rdfProperty.getWidgetType()) {
                                     case Date:
-                                        htmlOutput.replace(propertyEl.getContent(), Serializer.serializeDateHtml(zone, toLanguage, DateTimeFormatter.ISO_DATE.parse(content)));
+                                        htmlOutput.replace(propertyEl.getContent(), RdfTools.serializeDateHtml(zone, toLanguage, DateTimeFormatter.ISO_DATE.parse(content)));
                                         break;
                                     case Time:
-                                        htmlOutput.replace(propertyEl.getContent(), Serializer.serializeTimeHtml(zone, toLanguage, DateTimeFormatter.ISO_TIME.parse(content)));
+                                        htmlOutput.replace(propertyEl.getContent(), RdfTools.serializeTimeHtml(zone, toLanguage, DateTimeFormatter.ISO_TIME.parse(content)));
                                         break;
                                     case DateTime:
-                                        htmlOutput.replace(propertyEl.getContent(), Serializer.serializeDateTimeHtml(zone, toLanguage, DateTimeFormatter.ISO_DATE_TIME.parse(content)));
+                                        htmlOutput.replace(propertyEl.getContent(), RdfTools.serializeDateTimeHtml(zone, toLanguage, DateTimeFormatter.ISO_DATE_TIME.parse(content)));
                                         break;
                                     default:
                                         throw new IOException("Encountered unimplemented widget type parser, please fix; " + rdfProperty.getWidgetType());
@@ -188,7 +192,7 @@ public class Controller extends DefaultTemplateController
                                 Iterable<ResourceProxy> enumSuggestion = rdfProperty.getEndpoint().search(rdfProperty, content, RdfEndpoint.QueryType.NAME, toLanguage, 1);
                                 Iterator<ResourceProxy> iter = enumSuggestion.iterator();
                                 if (iter.hasNext()) {
-                                    htmlOutput.replace(propertyEl.getContent(), Serializer.serializeEnumHtml(iter.next()));
+                                    htmlOutput.replace(propertyEl.getContent(), RdfTools.serializeEnumHtml(iter.next()));
                                 }
 
                                 break;
@@ -196,7 +200,7 @@ public class Controller extends DefaultTemplateController
                             case Resource:
                                 ResourceProxy resourceInfo = rdfProperty.getDataType().getEndpoint().getResource(rdfProperty.getDataType(), URI.create(resource), toLanguage);
                                 if (resourceInfo != null) {
-                                    htmlOutput.replace(propertyEl.getContent(), Serializer.serializeResourceHtml(rdfProperty, resourceInfo));
+                                    htmlOutput.replace(propertyEl.getContent(), RdfTools.serializeResourceHtml(rdfProperty, resourceInfo));
                                 }
 
                                 break;
@@ -256,6 +260,19 @@ public class Controller extends DefaultTemplateController
                     }
                 }
             }
+        }
+    }
+
+    private void fillInGeneratedValue(RdfProperty rdfProperty, Source source, Element propertyEl, OutputDocument htmlOutput) {
+        //value can be any return type
+        Object generatedValue = rdfProperty.getValueModifier().getValue(rdfProperty.getValueModifier().initValueModifierInput(source, propertyEl, htmlOutput));
+        if(generatedValue != null){
+            String generatedValueString = generatedValue.toString();
+            htmlOutput.replace(propertyEl.getContent(), generatedValueString.trim());
+            Attributes attributes = propertyEl.getAttributes();
+            Map<String, String> newAttributes = htmlOutput.replace(attributes, false);
+            //note that since the @about attribute of pages is relative, we also keep this relative
+            newAttributes.put(RDF_CONTENT_ATTR, generatedValueString);
         }
     }
 }

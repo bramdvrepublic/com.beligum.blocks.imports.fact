@@ -17,7 +17,7 @@
 /**
  * Created by bram on 24/02/16.
  */
-base.plugin("blocks.imports.FactEntryText", ["base.core.Class", "blocks.imports.Text", "blocks.core.MediumEditor", "constants.blocks.core", "constants.blocks.imports.fact", "constants.blocks.imports.text", function (Class, Text, MediumEditor, BlocksConstants, FactConstants, TextConstants)
+base.plugin("blocks.imports.FactEntryText", ["base.core.Class", "blocks.imports.Text", "blocks.core.MediumEditor", "constants.blocks.core", "constants.blocks.imports.fact", function (Class, Text, MediumEditor, BlocksConstants, FactConstants)
 {
     var BlocksFactEntryText = this;
     this.TAGS = [
@@ -52,12 +52,6 @@ base.plugin("blocks.imports.FactEntryText", ["base.core.Class", "blocks.imports.
 
             if (editorEl.length > 0) {
 
-                // before we call the superclass, we need to add the inline option here if it's the first time this is focused
-                // because this callback is called before admin.js so the initialization in the superclass is right
-                if (editorEl.hasClass(BlocksConstants.WIDGET_TYPE_INLINE_EDITOR)) {
-                    editorEl.attr(TextConstants.OPTIONS_ATTR, TextConstants.OPTIONS_FORCE_INLINE + " " + TextConstants.OPTIONS_NO_TOOLBAR);
-                }
-
                 var retVal = BlocksFactEntryText.Class.Super.prototype.focus.call(this, block, editorEl, hotspot, event);
 
                 // It makes sense to select all text in the fact block when we gain focus,
@@ -65,6 +59,9 @@ base.plugin("blocks.imports.FactEntryText", ["base.core.Class", "blocks.imports.
                 // Note: don't do this if the editor is empty, it looks weird to have no cursor, but a small stripe selected instead
                 if (element.text().trim().length !== 0) {
                     MediumEditor.selectAllContents();
+                }
+                else {
+                    Logger.info('blah, empty');
                 }
 
                 // This aligns the toolbar with the overlay of the fact block,

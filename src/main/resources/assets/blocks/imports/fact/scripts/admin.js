@@ -301,7 +301,11 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             var retVal = {
                 element: null,
             };
-
+            // var initialValue;
+            // if(newValueTerm.valueModifier){
+            //     initialValue = FactMessages.generatedOnSaveMessage
+            //     propElement.removeClass(ImportsConstants.COMMONS_EMPTY_CLASS);
+            // }
             if (newValueTerm.widgetType) {
 
                 // If we switch from an editor widget to a non-editor, we need to destroy the editor manually, because there's no blur() call
@@ -646,15 +650,24 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                     //Note: the editor works best with wrapped <p>'s but these are added automatically on edit so let's start clean
                     //propElement.html('<p>'+placeholder+'</p>');
 
-                    // note: the editor doesn't exist yet, it will be activated by the focus call below,
-                    // so set a timeout
-                    setTimeout(function ()
-                    {
-                        // note: use this instead of html('') so it triggers the editableInput event,
-                        //       but note it won't trigger anything if the content didn't change, so make sure
-                        //       it's different from the default content (eg. don't use setContent('') ...)
-                        MediumEditor.getActiveEditor().setContent(' ');
-                    }, 100);
+
+
+                        // note: the editor doesn't exist yet, it will be activated by the focus call below,
+                        // so set a timeout
+                        setTimeout(function ()
+                        {
+                            // note: use this instead of html('') so it triggers the editableInput event,
+                            //       but note it won't trigger anything if the content didn't change, so make sure
+                            //       it's different from the default content (eg. don't use setContent('') ...)
+                            if(valueTerm.valueModifier){
+                                propElement.text(valueTerm.valueModifier.initialValue);
+                            }
+                            else {
+                                MediumEditor.getActiveEditor().setContent(' ');
+                            }
+                        }, 100);
+
+
 
                     // This basically "re-focuses" the block and is needed because the registered selector of admin-text.js
                     // might not exist yet (when the block changed to input type 'editor' in this callback).
@@ -706,11 +719,18 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             else {
                 if (!skipHtmlChange) {
                     // see _createEditorWidget()
-                    setTimeout(function ()
-                    {
-                        // note: use this instead of html('') so it triggers the editableInput event
-                        MediumEditor.getActiveEditor().setContent('');
-                    }, 100);
+                        setTimeout(function ()
+                        {
+                            // note: use this instead of html('') so it triggers the editableInput event
+                            if(valueTerm.valueModifier){
+                                propElement.text(valueTerm.valueModifier.initialValue);
+                            }
+                            else {
+                                MediumEditor.getActiveEditor().setContent(' ');
+                            }
+                        }, 100);
+
+
 
                     // see _createEditorWidget()
                     Broadcaster.send(Broadcaster.EVENTS.BLOCK.FOCUS, event, {
@@ -752,7 +772,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                     propElement.attr(CONTENT_ATTR, CONTENT_VALUE_FALSE);
                 }
 
-                // Note: we just create a dummy inner <div>, rest is done in CSS, based on the content attribute
+                // Note: we just create a dummy inner <i>, rest is done in CSS, based on the content attribute
                 propElement.html('<div class="' + BlocksConstants.WIDGET_TYPE_BOOLEAN_VALUE_CLASS + '" />');
 
                 // this is needed when we're in the sidebar (setting a value creates an extra div),
@@ -843,8 +863,14 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             {
                 updateCallback(propElement, placeholder, input.val());
             });
-
             var firstValue = propElement.attr(CONTENT_ATTR);
+            if(valueTerm.valueModifier){
+                firstValue = valueTerm.valueModifier.initialValue;
+            }
+            else {
+                firstValue = propElement.attr(CONTENT_ATTR);
+            }
+
 
             //if the html widget is uninitialized, try to set it to a default value
             if (Commons.isUnset(firstValue) || firstValue === FactMessages.widgetEntryPlaceholder) {
@@ -900,7 +926,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             }
 
             var initializing = true;
-            var format = valueTerm.widgetConfig[BlocksConstants.WIDGET_CONFIG_DURATION_FORMAT];
+            var format = valueTerm.widgetConfig[BlocksConstants.WIDGET_CONFIG_DURATION_FORMAT] || BlocksConstants.WIDGET_CONFIG_DURATION_FORMAT_FULL;
             var daysInput;
             var hoursInput;
             var minutesInput;
@@ -951,8 +977,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                         _this._checkBasicCreateDestroy(_this, propElement, propParentElement, newValueNumber);
                     }
 
-                    // we switched this from "> 0" to ">= 0" to allow zero-values (which make sense), but without testing, hope it's okay...
-                    if (newValueNumber >= 0) {
+                    if (newValueNumber > 0) {
 
                         // Note: this means the true value of a duration is the number of milliseconds
                         propElement.attr(CONTENT_ATTR, newValueNumber);
@@ -1380,7 +1405,7 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
             var endpointConfig = {};
             endpointConfig[BlocksConstants.RDF_RES_TYPE_CURIE_PARAM] = objDatatypeCurie;
 
-            // ask the server to list all the terms of this property's object data type
+            //ask the server to list all the terms of this property's object data type
             $.getJSON(BlocksConstants.RDF_PROPERTIES_ENDPOINT, endpointConfig)
                 .done(function (allPropertiesData)
                 {
@@ -1409,8 +1434,6 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
                                 var inSidebar = true;
                                 var skipHtmlChange;
 
-                                // Watch out: this basically means we can't have double entries in sub-properties.
-                                // But that's not enforced by the server side API, so it's a TODO...
                                 var existingObjProp = propElement.find('[' + PROPERTY_ATTR + '="' + curie + '"]').eq(ref.length - 1);
                                 if (existingObjProp.length) {
                                     objContainer = existingObjProp.parent();
@@ -1732,7 +1755,10 @@ base.plugin("blocks.imports.FactEntry", ["base.core.Class", "blocks.imports.Bloc
 
                 allPropChildren.sort(function (a, b)
                 {
-                    return (+$(a).data(OBJ_INDEX_DATA_KEY)) - (+$(b).data(OBJ_INDEX_DATA_KEY));
+                    var aEl = $(a);
+                    var bEl = $(b);
+
+                    return +aEl.data(OBJ_INDEX_DATA_KEY) - +bEl.data(OBJ_INDEX_DATA_KEY);
                 });
 
                 propParentElement.append(allPropChildren);
